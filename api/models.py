@@ -3,7 +3,7 @@ Pydantic 응답 모델 — 프론트엔드 types/network.ts와 1:1 대응.
 """
 
 from __future__ import annotations
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DnsRecord(BaseModel):
@@ -75,6 +75,8 @@ class CertInfo(BaseModel):
     ocspUrl: str | None
     isRoot: bool
     isTrusted: bool
+    spkiFingerprint: str = ""
+    certFingerprint: str = ""
 
 
 class TlsNegotiated(BaseModel):
@@ -103,6 +105,26 @@ class HttpResult(BaseModel):
     bodySize: int
     requestHeaders: list[HttpHeader]
     responseHeaders: list[HttpHeader]
+
+
+class MitmEvidence(BaseModel):
+    type: str    # issuer_unknown | proxy_keyword
+    detail: str
+
+
+class MitmResult(BaseModel):
+    verdict: str                           # INTERCEPTED | CLEAN | ERROR
+    evidence: list[MitmEvidence] = Field(default_factory=list)
+    issuerOrg: str = ""
+    issuerCN: str = ""
+    validityDays: int | None = None
+
+
+class BlockDiagnosis(BaseModel):
+    blockType: str   # PASS | DNS_BLOCKED | IP_BLOCKED | DOMAIN_BLOCKED | CLIENT_BLOCKED | UNKNOWN
+    detail: str
+    rawTcpOk: bool | None = None
+    resolvedIp: str = ""
 
 
 class NetworkTrace(BaseModel):

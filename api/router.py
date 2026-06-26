@@ -8,14 +8,15 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from api.dns_lookup import resolve_chain
-from api.traceroute import run_traceroute
+from api.traceroute import stream_traceroute, run_traceroute_batch
 from api.tls import get_cert_chain
 from api.http_probe import probe_http
 from api.geo import lookup_geo_batch
@@ -67,7 +68,7 @@ async def trace(host: str = Query(..., description="조회할 호스트명 (예:
     # ── Phase 1: 호스트명만 있으면 되는 작업 — 전부 동시 실행 ────────────────
     results = await asyncio.gather(
         asyncio.to_thread(resolve_chain, host),      # DNS 재귀 체인
-        asyncio.to_thread(run_traceroute, host),     # Traceroute + GeoIP + AS
+        run_traceroute_batch(host),                  # Traceroute + GeoIP + AS (async)
         asyncio.to_thread(get_cert_chain, host),     # TLS 핸드셰이크 + 인증서
         probe_http(f"https://{host}"),               # HTTP/2 헤더 (이미 async)
         _client_geo_async(),                         # 클라이언트 위치 (이미 async)
@@ -137,19 +138,60 @@ async def dns_endpoint(host: str = Query(...)):
 
 @router.get("/traceroute")
 async def traceroute_endpoint(host: str = Query(...)):
-    """Traceroute + GeoIP + AS 정보"""
-    try:
-        hops = await asyncio.to_thread(run_traceroute, host)
-        return JSONResponse(hops)
-    except Exception as e:
-        raise HTTPException(502, str(e))
+    """
+    Traceroute SSE 스트리밍.
+
+    hop이 응답할 때마다 즉시 SSE 이벤트를 전송합니다.
+    OS 기본 timeout을 유지하므로 어떤 경로도 누락 없이 추적합니다.
+
+    이벤트 형식:
+      data: <TraceHop JSON>    — 각 hop (enriched with GeoIP + AS)
+      event: done\ndata: {}    — 스트림 종료
+    """
+    async def event_gen():
+        try:
+            async for hop in stream_traceroute(host):
+                yield f"data: {json.dumps(hop)}\n\n"
+        except Exception as e:
+            yield f"event: error\ndata: {json.dumps({'message': str(e)})}\n\n"
+        finally:
+            yield "event: done\ndata: {}\n\n"
+
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",   # nginx 버퍼링 비활성화
+        },
+    )
 
 
 @router.get("/tls")
 async def tls_endpoint(host: str = Query(...)):
-    """TLS 핸드셰이크 + 인증서 체인"""
+    """TLS 핸드셰이크 + 인증서 체인 + MITM 판정 + 차단 유형 분류"""
     try:
         result = await asyncio.to_thread(get_cert_chain, host)
+
+        # HTTP 코드를 가져와 blockDiagnosis에 주입 (TLS 성공 시에만)
+        if result.get("blockDiagnosis") and result["blockDiagnosis"].get("blockType") == "PASS":
+            from api.http_probe import probe_http
+            try:
+                http_result = await probe_http(f"https://{host}")
+                http_code = http_result.get("status")
+                if http_code in (403, 407, 451):
+                    from api.block_diagnosis import diagnose_block
+                    block = await asyncio.to_thread(
+                        diagnose_block,
+                        host,
+                        result["blockDiagnosis"].get("resolvedIp"),
+                        True, True, True,
+                        http_code,
+                    )
+                    result["blockDiagnosis"] = block
+            except Exception:
+                pass
+
         return JSONResponse(result)
     except Exception as e:
         raise HTTPException(502, str(e))
