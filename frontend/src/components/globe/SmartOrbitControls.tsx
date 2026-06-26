@@ -52,7 +52,7 @@ export default function SmartOrbitControls({ camTarget }: SmartOrbitControlsProp
       ref={ref}
       makeDefault
       enablePan={false}
-      minDistance={1.5}
+      minDistance={1.2}
       maxDistance={5}
       enableDamping
       dampingFactor={0.08}

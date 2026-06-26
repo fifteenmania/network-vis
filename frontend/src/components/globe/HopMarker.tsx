@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Html } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -35,6 +35,7 @@ export default function HopMarker({
   const meshRef = useRef<THREE.Mesh>(null)
   const { camera } = useThree()
   const { selectedHop, selectHop } = useTraceStore()
+  const [occluded, setOccluded] = useState(false)
 
   const isSelected = selectedHop === hopIndex
   const color      = COLOR[kind]
@@ -80,6 +81,9 @@ export default function HopMarker({
         position={[0, 0.06, 0]}
         center
         zIndexRange={[10, 0]}
+        occlude
+        onOcclude={setOccluded}
+        distanceFactor={8}
         style={{ pointerEvents: 'none', userSelect: 'none' }}
       >
         <div
@@ -94,6 +98,8 @@ export default function HopMarker({
             color,
             whiteSpace: 'nowrap',
             lineHeight: 1.5,
+            transition: 'opacity 0.15s',
+            opacity: occluded ? 0 : 1,
           }}
         >
           {labelText}
