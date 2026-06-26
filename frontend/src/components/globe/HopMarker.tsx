@@ -1,17 +1,16 @@
+import { useRef } from 'react'
 import { Html } from '@react-three/drei'
+import { useFrame, useThree } from '@react-three/fiber'
+import * as THREE from 'three'
 import { useTraceStore } from '../../store/traceStore'
-import type { GeoPoint } from '../../types/network'
-import type * as THREE from 'three'
+import type { GeoPoint, TraceHop } from '../../types/network'
 
 interface HopMarkerProps {
   position: THREE.Vector3
   kind: 'client' | 'router' | 'destination'
   hopIndex: number
-  point: GeoPoint
-  /** 1이면 단일 hop, 2+ 이면 클러스터 (배지 표시) */
-  clusterCount?: number
-  /** 클러스터 평균 RTT (ms) */
-  avgRtt?: number
+  point: GeoPoint   // client/destination 라벨용. router는 hop.location 과 동일.
+  hop?: TraceHop    // router 전용: 라벨(hop번호·도시·RTT) 계산에 사용
 }
 
 const COLOR = {
@@ -21,9 +20,9 @@ const COLOR = {
 }
 
 const DOT_SIZE = {
-  client:      0.012,
-  destination: 0.012,
-  router:      0.007,
+  client:      0.016,
+  destination: 0.016,
+  router:      0.010,
 }
 
 export default function HopMarker({
@@ -31,86 +30,75 @@ export default function HopMarker({
   kind,
   hopIndex,
   point,
-  clusterCount = 1,
-  avgRtt,
+  hop,
 }: HopMarkerProps) {
+  const meshRef = useRef<THREE.Mesh>(null)
+  const { camera } = useThree()
   const { selectedHop, selectHop } = useTraceStore()
-  const isSelected    = selectedHop === hopIndex
-  const isCluster     = clusterCount > 1
-  const color         = isCluster ? '#e3b341' : COLOR[kind]
-  const baseSize      = DOT_SIZE[kind]
-  // 클러스터는 크기를 hop 수에 비례해 살짝 키움 (최대 1.8배)
-  const size          = isCluster ? baseSize * Math.min(1 + clusterCount * 0.15, 1.8) : baseSize
 
-  // client/destination은 항상 라벨, router는 클러스터일 때만 배지
-  const showLabel     = kind !== 'router' || isCluster
+  const isSelected = selectedHop === hopIndex
+  const color      = COLOR[kind]
+  const size       = DOT_SIZE[kind]
+
+  // 카메라 거리에 비례해 마커 크기 유지 (줌인/줌아웃 시 화면상 일정 크기)
+  useFrame(() => {
+    if (!meshRef.current) return
+    const dist = camera.position.length()
+    meshRef.current.scale.setScalar(dist / 2.8) // 2.8 = 초기 카메라 거리
+  })
+
+  // 라벨 텍스트 계산
+  const labelText = (() => {
+    if (kind !== 'router') {
+      return point.label.split(',')[0]
+    }
+    const city = (hop?.location.label ?? point.label).split(',')[0]
+    if (!hop) return city
+    const rttAvg = hop.rttMs.length
+      ? hop.rttMs.reduce((a, b) => a + b, 0) / hop.rttMs.length
+      : null
+    const rttText = rttAvg !== null ? `${rttAvg.toFixed(1)}ms` : null
+    // "3 · Seongnam-si · 1.2ms"
+    return [hop.hop, city, rttText].filter(Boolean).join(' · ')
+  })()
 
   return (
     <group position={position}>
-      <mesh onClick={() => selectHop(isSelected ? null : hopIndex)}>
+      <mesh
+        ref={meshRef}
+        onClick={() => selectHop(isSelected ? null : hopIndex)}
+      >
         <sphereGeometry args={[size, 12, 12]} />
         <meshStandardMaterial
           color={color}
           emissive={color}
-          emissiveIntensity={isSelected ? 3 : isCluster ? 1.8 : 1.2}
+          emissiveIntensity={isSelected ? 3 : 1.2}
         />
       </mesh>
 
-      {showLabel && (
-        <Html
-          position={[0, 0.06, 0]}
-          center
-          zIndexRange={[10, 0]}
-          style={{ pointerEvents: 'none', userSelect: 'none' }}
+      <Html
+        position={[0, 0.06, 0]}
+        center
+        zIndexRange={[10, 0]}
+        style={{ pointerEvents: 'none', userSelect: 'none' }}
+      >
+        <div
+          style={{
+            background: 'rgba(8,12,20,0.82)',
+            border: `1px solid ${color}`,
+            borderRadius: 3,
+            padding: '1px 6px',
+            fontSize: kind === 'router' ? 10 : 11,
+            fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 600,
+            color,
+            whiteSpace: 'nowrap',
+            lineHeight: 1.5,
+          }}
         >
-          {isCluster ? (
-            // 클러스터 배지: "N hops · XXms"
-            <div
-              style={{
-                background: 'rgba(8,12,20,0.88)',
-                border: `1px solid ${color}`,
-                borderRadius: 4,
-                padding: '2px 7px',
-                fontSize: 10,
-                fontFamily: "'JetBrains Mono', monospace",
-                fontWeight: 600,
-                color,
-                whiteSpace: 'nowrap',
-                lineHeight: 1.5,
-                display: 'flex',
-                gap: 4,
-                alignItems: 'center',
-              }}
-            >
-              <span>{clusterCount} hops</span>
-              {avgRtt !== undefined && (
-                <>
-                  <span style={{ opacity: 0.5 }}>·</span>
-                  <span>{Math.round(avgRtt)}ms</span>
-                </>
-              )}
-            </div>
-          ) : (
-            // 단일 client/destination 라벨
-            <div
-              style={{
-                background: 'rgba(8,12,20,0.82)',
-                border: `1px solid ${color}`,
-                borderRadius: 3,
-                padding: '1px 6px',
-                fontSize: 11,
-                fontFamily: "'JetBrains Mono', monospace",
-                fontWeight: 600,
-                color,
-                whiteSpace: 'nowrap',
-                lineHeight: 1.5,
-              }}
-            >
-              {point.label.split(',')[0]}
-            </div>
-          )}
-        </Html>
-      )}
+          {labelText}
+        </div>
+      </Html>
     </group>
   )
 }
