@@ -5,6 +5,8 @@ import * as THREE from 'three'
 import Earth from './Earth'
 import Atmosphere from './Atmosphere'
 import HopMarker from './HopMarker'
+import LabelLayer from './LabelLayer'
+import type { LabelMarker } from './LabelLayer'
 import RouteArc from './RouteArc'
 import PacketParticle from './PacketParticle'
 import SmartOrbitControls from './SmartOrbitControls'
@@ -112,6 +114,36 @@ function GlobeContent() {
     [hopPositions, visibleHopsSlice.length],
   )
 
+  // exact dedup: 동일 lat/lng hop은 첫 번째만 마커로 표시.
+  // 클러스터링(반경 기반)이 아닌 단순 좌표 동일 여부 필터.
+  const dedupedMarkers = useMemo(() => {
+    const seen = new Set<string>()
+    const result: { hop: TraceHop; pos: THREE.Vector3; originalIdx: number }[] = []
+    visibleHopsSlice.forEach((hop, i) => {
+      if (hop.location.lat === 0 && hop.location.lng === 0) return
+      const key = `${hop.location.lat},${hop.location.lng}`
+      if (seen.has(key)) return
+      seen.add(key)
+      result.push({ hop, pos: visiblePositions[i], originalIdx: i })
+    })
+    return result
+  }, [visibleHopsSlice, visiblePositions])
+
+  // LabelLayer 에 전달할 통합 마커 배열 (client + hops + destination)
+  const labelMarkers = useMemo<LabelMarker[]>(() => {
+    const list: LabelMarker[] = []
+    if (showMarkers && clientPos && client) {
+      list.push({ position: clientPos, kind: 'client', hopIndex: -1, point: client })
+    }
+    dedupedMarkers.forEach(({ hop, pos, originalIdx }) => {
+      list.push({ position: pos, kind: 'router', hopIndex: originalIdx, point: hop.location, hop })
+    })
+    if (showArcs && destPos && destination) {
+      list.push({ position: destPos, kind: 'destination', hopIndex: hops?.length ?? 0, point: destination })
+    }
+    return list
+  }, [showMarkers, clientPos, client, dedupedMarkers, showArcs, destPos, destination, hops?.length])
+
   const visibleArcCount = showArcs ? Math.min(visibleHops, arcCurves.length) : 0
 
   return (
@@ -134,20 +166,17 @@ function GlobeContent() {
         <HopMarker position={clientPos} kind="client" hopIndex={-1} point={client} />
       )}
 
-      {/* hop 마커 — 클러스터링 없음. lat:0 lng:0(unknown)은 skip. */}
-      {visibleHopsSlice.map((hop, i) => {
-        if (hop.location.lat === 0 && hop.location.lng === 0) return null
-        return (
-          <HopMarker
-            key={`hop-${hop.hop}-${i}`}
-            position={visiblePositions[i]}
-            kind="router"
-            hopIndex={i}
-            point={hop.location}
-            hop={hop}
-          />
-        )
-      })}
+      {/* hop 마커 — exact dedup 적용. lat:0 lng:0(unknown) 및 중복 좌표 skip. */}
+      {dedupedMarkers.map(({ hop, pos, originalIdx }) => (
+        <HopMarker
+          key={`hop-${hop.hop}-${originalIdx}`}
+          position={pos}
+          kind="router"
+          hopIndex={originalIdx}
+          point={hop.location}
+          hop={hop}
+        />
+      ))}
 
       {/* 목적지 마커 */}
       {showArcs && destPos && destination && (
@@ -158,6 +187,9 @@ function GlobeContent() {
           point={destination}
         />
       )}
+
+      {/* 라벨 레이어: 모든 라벨 중앙 관리 + greedy screen-space declutter */}
+      <LabelLayer markers={labelMarkers} />
 
       {/* RTT 색상 arc */}
       {arcCurves.slice(0, visibleArcCount).map((curve, i) => {
@@ -195,7 +227,7 @@ function GlobeContent() {
 export default function GlobeScene() {
   return (
     <Canvas
-      camera={{ position: [0, 0, 2.8], fov: 45 }}
+      camera={{ position: [0, 0, 2.8], fov: 45, near: 0.01, far: 500 }}
       style={{ background: '#0d1117', width: '100%', height: '100%' }}
     >
       <GlobeContent />
