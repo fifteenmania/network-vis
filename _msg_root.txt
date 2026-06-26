@@ -1,1 +1,0 @@
-feat: 지구본 arc/파티클 시각화 의도 개선 (frontend submodule)
