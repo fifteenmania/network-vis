@@ -1,0 +1,85 @@
+.section {
+  margin-top: 10px;
+}
+
+.chain {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.cert {
+  display: flex;
+  flex-direction: column;
+}
+
+.certHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--c-bg-3);
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+  width: 100%;
+}
+
+.certHeader:hover {
+  background: var(--c-border-2);
+}
+
+.certBadge {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  border: 1px solid var(--c-border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  flex-shrink: 0;
+  color: var(--c-text-dim);
+}
+
+.certSubject {
+  font-size: var(--fs-2xs);
+  font-family: var(--font-mono);
+  color: var(--c-text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trusted {
+  font-size: var(--fs-xs);
+  color: var(--c-green);
+  flex-shrink: 0;
+}
+
+.chevron {
+  font-size: 9px;
+  color: var(--c-text-dim);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.certBody {
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chainArrow {
+  text-align: center;
+  font-size: 9px;
+  color: var(--c-text-dim);
+  padding: 3px 0;
+  font-family: var(--font-mono);
+}

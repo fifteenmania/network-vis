@@ -1,0 +1,122 @@
+.timeline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--c-bg-2);
+  border-top: 1px solid var(--c-border);
+  flex-shrink: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ctrl {
+  background: var(--c-bg-3);
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  color: var(--c-text-2);
+  font-size: var(--fs-sm);
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.ctrl:hover {
+  background: var(--c-border);
+  color: var(--c-text);
+}
+
+.total {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--c-text-dim);
+  white-space: nowrap;
+}
+
+.total strong {
+  color: var(--c-text-2);
+  font-weight: 500;
+}
+
+.steps {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  overflow-x: auto;
+  gap: 0;
+  scrollbar-width: none;
+}
+
+.steps::-webkit-scrollbar { display: none; }
+
+.connector {
+  display: inline-block;
+  width: 16px;
+  height: 1px;
+  background: var(--c-border);
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+/* ── status chip ── */
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  font-weight: 500;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.chipLabel {
+  white-space: nowrap;
+}
+
+.chipIdle {
+  color: var(--c-text-dim);
+  border-color: var(--c-border);
+  background: transparent;
+}
+
+.chipLoading {
+  color: var(--c-accent);
+  border-color: var(--c-border);
+  background: var(--c-bg-3);
+}
+
+.chipDone {
+  color: var(--c-green);
+  border-color: var(--c-border);
+  background: var(--c-bg-3);
+}
+
+.chipError {
+  color: var(--c-danger);
+  border-color: var(--c-border);
+  background: var(--c-bg-3);
+}
+
+.chipSpinner {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--c-border);
+  border-top-color: var(--c-accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}

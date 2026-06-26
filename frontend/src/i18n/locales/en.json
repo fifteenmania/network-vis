@@ -1,0 +1,107 @@
+{
+  "appTitle": "Network Stack Visualizer",
+  "common": {
+    "error": "Error",
+    "cancel": "Cancel"
+  },
+  "search": {
+    "placeholder": "Enter hostname (e.g. api.openai.com)",
+    "button": "Start Trace",
+    "fallbackNotice": "Cannot reach API server — running simulation with mock data."
+  },
+  "phases": {
+    "idle": "Idle",
+    "dns": "DNS Lookup",
+    "trace": "Traceroute",
+    "tcp": "TCP Connect",
+    "tls": "TLS Handshake",
+    "http": "HTTP Request",
+    "complete": "Complete"
+  },
+  "panels": {
+    "placeholder": "Enter a hostname and start a trace.",
+    "dnsChain": {
+      "title": "DNS Recursive Resolution Chain"
+    },
+    "dns": {
+      "title": "DNS Lookup",
+      "resolver": "Resolver",
+      "duration": "Duration",
+      "records": "Records",
+      "type": "Type",
+      "value": "Value",
+      "ttl": "TTL",
+      "chainToggle": "Show recursive resolution",
+      "error": "DNS lookup failed."
+    },
+    "trace": {
+      "title": "Traceroute",
+      "hop": "Hop",
+      "ip": "IP Address",
+      "hostname": "Hostname",
+      "rtt": "RTT",
+      "location": "Location",
+      "noHostname": "(no response)",
+      "bgpInfo": "BGP / AS Info",
+      "asNumber": "AS Number",
+      "org": "Org",
+      "country": "Country",
+      "prefix": "Prefix",
+      "error": "Traceroute failed."
+    },
+    "tcp": {
+      "title": "TCP Connection",
+      "synSent": "SYN Sent",
+      "synAckReceived": "SYN-ACK Received",
+      "ackSent": "ACK Sent",
+      "established": "Connection Established"
+    },
+    "tls": {
+      "title": "TLS Handshake",
+      "clientHello": {
+        "label": "ClientHello",
+        "desc": "Client advertises supported TLS versions, cipher suites, and SNI to the server."
+      },
+      "serverHello": {
+        "label": "ServerHello",
+        "desc": "Server selects TLS version, cipher, and performs Key Share exchange."
+      },
+      "certificate": {
+        "label": "Certificate",
+        "desc": "Server presents its certificate chain; client verifies the CA signature."
+      },
+      "finished": {
+        "label": "Finished",
+        "desc": "Handshake complete. All subsequent data is encrypted with the negotiated keys."
+      },
+      "direction": {
+        "client": "Client",
+        "server": "Server"
+      },
+      "error": "Failed to retrieve TLS handshake information."
+    },
+    "http": {
+      "title": "HTTP Request",
+      "method": "Method",
+      "status": "Status Code",
+      "duration": "Response Time",
+      "protocol": "Protocol",
+      "reqHeaders": "Request Headers",
+      "resHeaders": "Response Headers",
+      "summary": "Summary",
+      "bodySize": "Body Size",
+      "error": "HTTP request failed."
+    }
+  },
+  "timeline": {
+    "play": "Play",
+    "pause": "Pause",
+    "reset": "Reset",
+    "total": "Total Duration"
+  },
+  "globe": {
+    "client": "My Location",
+    "destination": "Destination",
+    "hop": "Hop"
+  }
+}

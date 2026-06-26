@@ -1,0 +1,302 @@
+/* ── 전체 body ── */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── 섹션 ── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 5px;
+  background: var(--c-bg-3);
+  border: 1px solid var(--c-border-2);
+}
+
+.sectionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectionLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  color: var(--c-text-dim);
+  font-weight: 500;
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+}
+
+/* ── 툴팁 ── */
+.tipWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.tipIcon {
+  font-size: 9px;
+  color: var(--c-text-dim);
+  opacity: 0.6;
+  line-height: 1;
+  transition: opacity 0.1s;
+}
+
+.tipWrap:hover .tipIcon {
+  opacity: 1;
+}
+
+.tipBox {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  width: 230px;
+  background: var(--c-bg-1);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  padding: 9px 11px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--c-text-2);
+  white-space: pre-line;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+
+/* align 변형 */
+.tipWrap[data-align="left"] .tipBox  { left: 0; }
+.tipWrap[data-align="center"] .tipBox { left: 50%; transform: translateX(-50%); }
+.tipWrap[data-align="right"] .tipBox { right: 0; }
+
+.tipWrap:hover .tipBox {
+  opacity: 1;
+}
+
+/* ── verdict 배지 ── */
+.verdict {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.04em;
+}
+
+.verdictIntercepted { color: var(--c-danger);          background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+.verdictSuspicious  { color: var(--c-warn, #d29922);   background: color-mix(in srgb, var(--c-warn, #d29922) 12%, transparent); }
+.verdictClean       { color: var(--c-green);            background: color-mix(in srgb, var(--c-green) 12%, transparent); }
+.verdictError       { color: var(--c-danger);           background: var(--c-bg-2); }
+
+.blockPass    { color: var(--c-green);         background: color-mix(in srgb, var(--c-green) 12%, transparent); }
+.blockBlocked { color: var(--c-danger);        background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+.blockWarn    { color: var(--c-warn, #d29922); background: color-mix(in srgb, var(--c-warn, #d29922) 12%, transparent); }
+.blockUnknown { color: var(--c-text-dim);      background: var(--c-bg-2); }
+
+/* ── 연결 흐름도 ── */
+.flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 8px 4px;
+  border-radius: 4px;
+  background: var(--c-bg-2);
+  border: 1px solid var(--c-border-2);
+  flex-wrap: nowrap;
+  overflow: visible;
+}
+
+.flowItem {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  justify-content: center;
+}
+
+.flowStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.flowDot {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.flowLabel {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.flowPass  { color: var(--c-green);   }
+.flowFail  { color: var(--c-danger);  }
+.flowDim   { color: var(--c-text-dim); opacity: 0.4; }
+
+.flowArrow {
+  font-size: 12px;
+  color: var(--c-border);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.flowArrowPass { color: var(--c-green); opacity: 0.6; }
+
+/* ── 요약 텍스트 ── */
+.summary {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  color: var(--c-text-2);
+  line-height: 1.55;
+  padding: 2px 0;
+}
+
+/* ── 차단 상세 ── */
+.blockDetail {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--c-text-dim);
+  line-height: 1.5;
+  padding: 2px 0;
+}
+
+/* ── 정보 그리드 ── */
+.infoGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.infoRow {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: var(--fs-2xs);
+}
+
+.infoKey {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+  color: var(--c-text-dim);
+  min-width: 76px;
+  flex-shrink: 0;
+  font-size: var(--fs-2xs);
+}
+
+.infoVal {
+  font-family: var(--font-mono);
+  color: var(--c-text-2);
+  word-break: break-all;
+  font-size: var(--fs-2xs);
+}
+
+/* ── 증거 드릴다운 ── */
+.evidenceSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--c-border-2);
+}
+
+.evidenceSectionLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  color: var(--c-text-dim);
+  font-weight: 500;
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.evidenceItem {
+  border-radius: 4px;
+  border: 1px solid var(--c-border-2);
+  overflow: hidden;
+}
+
+.evidenceHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.evidenceHeader:hover {
+  background: var(--c-bg-2);
+}
+
+.evidenceType {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--c-danger);
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.evidenceBrief {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  color: var(--c-text-dim);
+  line-height: 1.4;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evidenceChevron {
+  font-size: 8px;
+  color: var(--c-text-dim);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.evidenceBody {
+  padding: 8px 10px 10px;
+  background: var(--c-bg-2);
+  border-top: 1px solid var(--c-border-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  line-height: 1.65;
+  color: var(--c-text-2);
+}
+
+.evidenceBody p {
+  margin: 0 0 4px;
+}

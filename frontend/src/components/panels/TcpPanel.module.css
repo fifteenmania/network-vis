@@ -1,0 +1,22 @@
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  color: var(--c-text-2);
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--c-green);
+  flex-shrink: 0;
+}

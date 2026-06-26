@@ -1,0 +1,107 @@
+{
+  "appTitle": "Network Stack Visualizer",
+  "common": {
+    "error": "오류",
+    "cancel": "취소"
+  },
+  "search": {
+    "placeholder": "호스트명 입력 (예: api.openai.com)",
+    "button": "Trace 시작",
+    "fallbackNotice": "API 서버에 연결할 수 없습니다 — 목 데이터로 시뮬레이션합니다."
+  },
+  "phases": {
+    "idle": "대기",
+    "dns": "DNS 조회",
+    "trace": "경로 추적",
+    "tcp": "TCP 연결",
+    "tls": "TLS 핸드셰이크",
+    "http": "HTTP 요청",
+    "complete": "완료"
+  },
+  "panels": {
+    "placeholder": "호스트명을 입력하고 Trace를 시작하세요.",
+    "dnsChain": {
+      "title": "DNS 재귀 조회 체인"
+    },
+    "dns": {
+      "title": "DNS 조회",
+      "resolver": "리졸버",
+      "duration": "소요시간",
+      "records": "레코드",
+      "type": "타입",
+      "value": "값",
+      "ttl": "TTL",
+      "chainToggle": "재귀 조회 과정 보기",
+      "error": "DNS 조회에 실패했습니다."
+    },
+    "trace": {
+      "title": "경로 추적 (Traceroute)",
+      "hop": "홉",
+      "ip": "IP 주소",
+      "hostname": "호스트명",
+      "rtt": "RTT",
+      "location": "위치",
+      "noHostname": "(응답 없음)",
+      "bgpInfo": "BGP / AS 정보",
+      "asNumber": "AS 번호",
+      "org": "기관",
+      "country": "국가",
+      "prefix": "Prefix",
+      "error": "Traceroute 실행에 실패했습니다."
+    },
+    "tcp": {
+      "title": "TCP 연결",
+      "synSent": "SYN 전송",
+      "synAckReceived": "SYN-ACK 수신",
+      "ackSent": "ACK 전송",
+      "established": "연결 수립 완료"
+    },
+    "tls": {
+      "title": "TLS 핸드셰이크",
+      "clientHello": {
+        "label": "ClientHello",
+        "desc": "클라이언트가 지원하는 TLS 버전과 암호화 스위트, SNI를 서버에 전달합니다."
+      },
+      "serverHello": {
+        "label": "ServerHello",
+        "desc": "서버가 TLS 버전과 암호화 알고리즘을 선택하고 Key Share를 교환합니다."
+      },
+      "certificate": {
+        "label": "Certificate",
+        "desc": "서버가 인증서를 전달합니다. 클라이언트는 CA 서명을 검증합니다."
+      },
+      "finished": {
+        "label": "Finished",
+        "desc": "핸드셰이크 완료. 이후 데이터는 협상된 키로 암호화됩니다."
+      },
+      "direction": {
+        "client": "클라이언트",
+        "server": "서버"
+      },
+      "error": "TLS 핸드셰이크 정보를 가져오지 못했습니다."
+    },
+    "http": {
+      "title": "HTTP 요청",
+      "method": "메서드",
+      "status": "상태 코드",
+      "duration": "응답 시간",
+      "protocol": "프로토콜",
+      "reqHeaders": "요청 헤더",
+      "resHeaders": "응답 헤더",
+      "summary": "요약",
+      "bodySize": "Body Size",
+      "error": "HTTP 요청에 실패했습니다."
+    }
+  },
+  "timeline": {
+    "play": "재생",
+    "pause": "일시정지",
+    "reset": "초기화",
+    "total": "총 소요시간"
+  },
+  "globe": {
+    "client": "내 위치",
+    "destination": "목적지",
+    "hop": "홉"
+  }
+}

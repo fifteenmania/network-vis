@@ -1,0 +1,35 @@
+.tableWrapper {
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.selected td {
+  background: var(--c-bg-3) !important;
+}
+
+.tableWrapper::-webkit-scrollbar { width: 4px; }
+.tableWrapper::-webkit-scrollbar-track { background: transparent; }
+.tableWrapper::-webkit-scrollbar-thumb {
+  background: var(--c-border);
+  border-radius: 2px;
+}
+
+.hopDetail {
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--c-bg-3);
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  font-size: var(--fs-xs);
+  border-bottom: 1px solid var(--c-border-2);
+}
+
+.detailRow:last-child {
+  border-bottom: none;
+}
