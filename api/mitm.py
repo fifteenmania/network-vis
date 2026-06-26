@@ -2,11 +2,12 @@
 MITM(SSL Inspection) 탐지 — 인증서 Issuer를 직접 검사해 기업 방화벽의 TLS 가로채기를 판정합니다.
 
 판정 증거 (인증서 기반, 외부 API 불필요):
-  1. Issuer CA 미등록 — resources/known_ca_orgs.json의 공개 CA 목록과 대조
-  2. 프록시 키워드    — resources/proxy_keywords.json 키워드가 Issuer에 있으면 INTERCEPTED
+  1. 프록시 키워드    — resources/proxy_keywords.json 키워드가 Issuer에 있으면 → INTERCEPTED (확정)
+  2. Issuer CA 미등록 — resources/known_ca_orgs.json의 공개 CA 목록과 불일치 → SUSPICIOUS (의심)
 
 판정 등급:
-  INTERCEPTED — 증거 1 또는 2 해당
+  INTERCEPTED — 프록시/방화벽 제품 키워드가 Issuer에서 감지됨 (확정 증거)
+  SUSPICIOUS  — 알려진 공개 CA 목록에 없는 Issuer (목록 누락일 수도 있어 확정 불가)
   CLEAN       — 알려진 공개 CA + 프록시 키워드 없음
   ERROR       — TLS 연결 실패 또는 인증서 파싱 오류
 """
@@ -50,7 +51,7 @@ class MitmEvidence:
 
 @dataclass
 class MitmResult:
-    verdict: str                           # INTERCEPTED | CLEAN | ERROR
+    verdict: str                           # INTERCEPTED | SUSPICIOUS | CLEAN | ERROR
     evidence: list[MitmEvidence] = field(default_factory=list)
     issuerOrg: str = ""
     issuerCN: str = ""
@@ -128,7 +129,16 @@ def analyze_chain(hostname: str, der_list: list[bytes], full_chain: bool = True)
     # Issuer 문자열 — O= 우선, 없으면 CN= 사용 (목록 비교용)
     issuer_str = issuer_org or issuer_cn
 
-    # ── 증거 1: Issuer CA 공개 목록 불일치 ───────────────────────────────────
+    # ── 증거 1: 프록시/방화벽 키워드 매칭 (확정 증거) ───────────────────────
+    full_issuer = f"{issuer_org} {issuer_cn}".lower()
+    matched_kw = [kw for kw in PROXY_KEYWORDS if kw and kw.lower() in full_issuer]
+    if matched_kw:
+        evidence.append(MitmEvidence(
+            type="proxy_keyword",
+            detail=f"Issuer에 프록시/방화벽 키워드 감지: {', '.join(matched_kw)}",
+        ))
+
+    # ── 증거 2: Issuer CA 공개 목록 불일치 (의심 증거) ───────────────────────
     issuer_known = any(
         known.lower() in issuer_str.lower()
         for known in KNOWN_CA_ORGS
@@ -140,16 +150,13 @@ def analyze_chain(hostname: str, der_list: list[bytes], full_chain: bool = True)
             detail=f"Issuer '{issuer_str}'가 알려진 공개 CA 목록에 없음",
         ))
 
-    # ── 증거 2: 프록시 CA 키워드 매칭 ────────────────────────────────────────
-    full_issuer = f"{issuer_org} {issuer_cn}".lower()
-    matched_kw = [kw for kw in PROXY_KEYWORDS if kw and kw.lower() in full_issuer]
+    # 키워드 매칭 → INTERCEPTED (확정), Issuer 불명 → SUSPICIOUS (의심), 이상 없음 → CLEAN
     if matched_kw:
-        evidence.append(MitmEvidence(
-            type="proxy_keyword",
-            detail=f"Issuer에 프록시/방화벽 키워드 감지: {', '.join(matched_kw)}",
-        ))
-
-    verdict = "INTERCEPTED" if evidence else "CLEAN"
+        verdict = "INTERCEPTED"
+    elif not issuer_known:
+        verdict = "SUSPICIOUS"
+    else:
+        verdict = "CLEAN"
 
     return asdict(MitmResult(
         verdict=verdict,

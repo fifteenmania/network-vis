@@ -113,7 +113,7 @@ class MitmEvidence(BaseModel):
 
 
 class MitmResult(BaseModel):
-    verdict: str                           # INTERCEPTED | CLEAN | ERROR
+    verdict: str                           # INTERCEPTED | SUSPICIOUS | CLEAN | ERROR
     evidence: list[MitmEvidence] = Field(default_factory=list)
     issuerOrg: str = ""
     issuerCN: str = ""
