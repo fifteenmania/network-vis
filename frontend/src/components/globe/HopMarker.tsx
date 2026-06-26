@@ -40,16 +40,17 @@ export default function HopMarker({
 
   useFrame(() => {
     if (!meshRef.current) return
-    // dist-to-marker 사용: 원근법과 상쇄되어 모든 줌 레벨에서 일정한 화면 픽셀 크기 유지
-    // (기존 camera.position.length()은 카메라→원점 거리라 줌인 시 16배 이상 커지는 버그 있음)
     const d = camera.position.distanceTo(position)
     meshRef.current.scale.setScalar(d / 2.0)
+    // 마커가 글로브 반대편에 있으면 숨김 (radius=1.0이라 depth test만으로는 부족)
+    meshRef.current.visible = position.dot(camera.position) > 0
   })
 
   return (
     <group position={position}>
       <mesh
         ref={meshRef}
+        renderOrder={1}
         onClick={e => { e.stopPropagation(); selectHop(isSelected ? null : hopIndex) }}
         onPointerOver={e => {
           e.stopPropagation()
@@ -66,6 +67,7 @@ export default function HopMarker({
           color={color}
           emissive={color}
           emissiveIntensity={isSelected ? 2.2 : 0.7}
+          depthWrite={false}
         />
       </mesh>
     </group>

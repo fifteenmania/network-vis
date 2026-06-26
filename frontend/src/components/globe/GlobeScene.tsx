@@ -52,15 +52,15 @@ function GlobeContent() {
 
   // 3D 좌표 변환
   const clientPos = useMemo(
-    () => (client ? latLngToVector3(client.lat, client.lng, 1.01) : null),
+    () => (client ? latLngToVector3(client.lat, client.lng, 1.0) : null),
     [client],
   )
   const destPos = useMemo(
-    () => (destination ? latLngToVector3(destination.lat, destination.lng, 1.01) : null),
+    () => (destination ? latLngToVector3(destination.lat, destination.lng, 1.0) : null),
     [destination],
   )
   const hopPositions = useMemo(
-    () => hops?.map((h) => latLngToVector3(h.location.lat, h.location.lng, 1.01)) ?? [],
+    () => hops?.map((h) => latLngToVector3(h.location.lat, h.location.lng, 1.0)) ?? [],
     [hops],
   )
 

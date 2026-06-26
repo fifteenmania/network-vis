@@ -10,7 +10,6 @@ export default function Earth() {
 
   return (
     <mesh>
-      {/* 세그먼트 64 → 128: 줌인 시 폴리곤 경계 제거 */}
       <sphereGeometry args={[1, 128, 128]} />
       <meshLambertMaterial map={texture} />
     </mesh>
