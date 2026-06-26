@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { Html, Text } from '@react-three/drei'
+import { Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useTraceStore } from '../../store/traceStore'
@@ -28,8 +28,10 @@ const COLOR: Record<LabelMarker['kind'], string> = {
   destination: '#2f81f7',
 }
 
-// Tier 2 카드를 마커 위 몇 px에 고정할지 (HTML CSS offset)
-const CARD_OFFSET_PX = 50
+// Tier 1 배지를 마커 위 고정 px에 표시 (screen-space → zoom 무관)
+const BADGE_OFFSET_PX = 24
+// Tier 2 카드를 마커 위 고정 px에 표시
+const CARD_OFFSET_PX  = 50
 
 // 프레임마다 재사용할 임시 벡터
 const _tmp    = new THREE.Vector3()
@@ -69,10 +71,10 @@ interface Props {
 }
 
 export default function LabelLayer({ markers }: Props) {
-  // Tier 1: WebGL Text 배지 — HTML이 아닌 Three.js Group ref
-  const badgeGroupRefs = useRef<(THREE.Group | null)[]>([])
-  // Tier 2: HTML 상세 카드 (호버/선택 시만, 정지 중 표시 → HTML lag 허용)
-  const cardRefs       = useRef<(HTMLDivElement | null)[]>([])
+  // Tier 1: HTML 배지 div ref
+  const badgeRefs = useRef<(HTMLDivElement | null)[]>([])
+  // Tier 2: HTML 상세 카드 (호버/선택 시만 표시)
+  const cardRefs  = useRef<(HTMLDivElement | null)[]>([])
 
   const { selectedHop } = useTraceStore()
 
@@ -92,34 +94,28 @@ export default function LabelLayer({ markers }: Props) {
       })
 
     order.forEach(({ m, i }) => {
-      const badgeGroup = badgeGroupRefs.current[i]
-      const card       = cardRefs.current[i]
+      const badge = badgeRefs.current[i]
+      const card  = cardRefs.current[i]
 
       // 지구 뒷면 감지
       const dot = _tmp.copy(m.position).normalize().dot(_camDir)
       if (dot < 0.1) {
-        if (badgeGroup) badgeGroup.visible = false
-        if (card)       card.style.opacity = '0'
+        if (badge) badge.style.opacity = '0'
+        if (card)  card.style.opacity  = '0'
         return
       }
 
-      // 배지 그룹 스케일 업데이트 (camera.distanceTo(marker)에 비례 → 화면 일정 크기)
-      if (badgeGroup) {
-        const d = camera.position.distanceTo(m.position)
-        badgeGroup.scale.setScalar(d / 2.0)
-      }
-
-      // NDC 투영 (마커 위치 기준, 배지 오프셋은 screen-space로 보정)
+      // 마커 NDC 투영 (배지는 CSS translateY로 screen-space 고정 오프셋)
       _tmp.copy(m.position)
       const ndc = _tmp.project(camera)
       if (ndc.z > 1) {
-        if (badgeGroup) badgeGroup.visible = false
-        if (card)       card.style.opacity = '0'
+        if (badge) badge.style.opacity = '0'
+        if (card)  card.style.opacity  = '0'
         return
       }
 
       const sx = ( ndc.x * 0.5 + 0.5) * size.width
-      const sy = (-ndc.y * 0.5 + 0.5) * size.height - 22  // 배지 위치 근사 보정
+      const sy = (-ndc.y * 0.5 + 0.5) * size.height - BADGE_OFFSET_PX
 
       // Tier 1 greedy declutter
       const W = 28, H = 18
@@ -128,7 +124,7 @@ export default function LabelLayer({ markers }: Props) {
         p => rect.x < p.x + p.w && rect.x + rect.w > p.x &&
              rect.y < p.y + p.h && rect.y + rect.h > p.y,
       )
-      if (badgeGroup) badgeGroup.visible = !overlaps
+      if (badge) badge.style.opacity = overlaps ? '0' : '1'
       if (!overlaps) placed.push(rect)
 
       // Tier 2: 선택 또는 호버 시만 표시
@@ -149,31 +145,39 @@ export default function LabelLayer({ markers }: Props) {
           <group key={`label-${hopIndex}`} position={position}>
 
             {/*
-              Tier 1: WebGL Text 배지
-              - drei의 <Text>는 troika-three-text 기반 WebGL 렌더링
-              - HTML CSS transform 방식의 Html 컴포넌트와 달리 글로브와 동일 프레임에 렌더됨
-              - 회전 시 텍스처 표면에 완전히 고정돼 보임 (lag 없음)
-              - 그룹 스케일을 useFrame에서 camera.distanceTo(position)/2로 업데이트 →
-                줌 레벨과 무관하게 화면상 일정 크기 유지
+              Tier 1: 항상 보이는 번호/S/D 배지
+              - Html position=[0,0,0]: 마커 world 좌표를 camera projection으로 screen 좌표 변환
+              - CSS translateY(-24px): 마커 위 고정 24px (screen-space → zoom에 무관)
+              - drei Html은 useFrame에서 매 프레임 DOM position 갱신 → lag 없음
             */}
-            <group
-              ref={el => { badgeGroupRefs.current[i] = el as THREE.Group | null }}
-              position={[0, 0.075, 0]}
+            <Html
+              position={[0, 0, 0]}
+              center
+              zIndexRange={[10, 0]}
+              style={{ pointerEvents: 'none', userSelect: 'none' }}
             >
-              <Text
-                fontSize={0.040}
-                color={color}
-                anchorX="center"
-                anchorY="middle"
-                outlineWidth={0.006}
-                outlineColor="#0a0f1a"
-                outlineOpacity={0.92}
+              <div
+                ref={el => { badgeRefs.current[i] = el }}
+                style={{
+                  transform: `translateY(-${BADGE_OFFSET_PX}px)`,
+                  background: 'rgba(8,12,20,0.88)',
+                  border: `1px solid ${color}`,
+                  borderRadius: 3,
+                  padding: '0 5px',
+                  fontSize: 9,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontWeight: 700,
+                  color,
+                  whiteSpace: 'nowrap',
+                  lineHeight: '16px',
+                  transition: 'opacity 0.1s',
+                }}
               >
                 {getBadgeText(kind, hop)}
-              </Text>
-            </group>
+              </div>
+            </Html>
 
-            {/* Tier 2: HTML 상세 카드 (호버/선택 시만 표시, 조작 중단 시 보임) */}
+            {/* Tier 2: HTML 상세 카드 (호버/선택 시만 표시) */}
             <Html
               position={[0, 0, 0]}
               center
