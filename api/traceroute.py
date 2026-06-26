@@ -9,11 +9,9 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 from api.geo import lookup_geo_batch
-from api.as_info import lookup_as
 
 
 @dataclass
@@ -98,9 +96,11 @@ def run_traceroute(hostname: str, max_hops: int = 20, timeout: int = 60) -> list
     is_windows = sys.platform.startswith("win")
 
     if is_windows:
-        cmd = ["tracert", "-d", "-h", str(max_hops), hostname]
+        # -w 1000: 각 hop 응답 대기 1초 (기본값 3초) → 최악의 경우 20초로 단축
+        cmd = ["tracert", "-d", "-w", "1000", "-h", str(max_hops), hostname]
     else:
-        cmd = ["traceroute", "-n", "-m", str(max_hops), hostname]
+        # -w 1: 1초 대기 (기본값 5초)
+        cmd = ["traceroute", "-n", "-w", "1", "-m", str(max_hops), hostname]
 
     try:
         proc = subprocess.run(
@@ -119,20 +119,9 @@ def run_traceroute(hostname: str, max_hops: int = 20, timeout: int = 60) -> list
 
     raw_hops = _parse_tracert_windows(output) if is_windows else _parse_traceroute_unix(output)
 
-    # 유효한 IP만 GeoIP / AS 조회
+    # 유효한 IP만 GeoIP + AS 조회 (ip-api.com 배치 한 번으로 해결)
     valid_ips = [ip for _, ip, _ in raw_hops if ip]
     geo_map = lookup_geo_batch(valid_ips)
-
-    # AS 조회: 병렬 처리 (최대 8 스레드)
-    as_map: dict[str, dict | None] = {}
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = {pool.submit(lookup_as, ip): ip for ip in valid_ips}
-        for fut in as_completed(futures):
-            ip = futures[fut]
-            try:
-                as_map[ip] = fut.result()
-            except Exception:
-                as_map[ip] = None
 
     # 타임아웃 hop 위치 보간 (이전 hop geo 재사용)
     last_geo: dict = {}
@@ -161,8 +150,8 @@ def run_traceroute(hostname: str, max_hops: int = 20, timeout: int = 60) -> list
                 "ip": ip,
                 "hostname": None,
                 "rttMs": rtts if rtts else [0.0],
-                "location": {**geo, "ip": ip},
-                "as": as_map.get(ip),
+                "location": {k: v for k, v in geo.items() if k != "as"},
+                "as": geo.get("as"),
             }
 
         result.append(hop_dict)
