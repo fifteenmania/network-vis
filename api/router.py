@@ -20,6 +20,7 @@ from api.traceroute import stream_traceroute, run_traceroute_batch
 from api.tls import get_cert_chain
 from api.http_probe import probe_http
 from api.geo import lookup_geo_batch
+from api.cdn_pop import fetch_cdn_pop, CDN_PROBES, ANYCAST_ASNS
 
 router = APIRouter(prefix="/api")
 
@@ -54,10 +55,10 @@ def _safe(result: Any, fallback: Any) -> Any:
     return fallback if isinstance(result, BaseException) else result
 
 
-_GEO_KEYS = {"lat", "lng", "label", "ip"}
+_GEO_KEYS = {"lat", "lng", "label"}
 
 def _geo_point(geo: dict, ip: str) -> dict:
-    """geo_map 항목에서 GeoPoint 필드만 추출합니다 (as 키 제거)."""
+    """geo_map 항목에서 GeoPoint 필드만 추출합니다 (as, iata 키 제거)."""
     return {k: v for k, v in geo.items() if k in _GEO_KEYS} | {"ip": ip}
 
 
@@ -86,7 +87,7 @@ async def trace(host: str = Query(..., description="조회할 호스트명 (예:
     http_result= _safe(http_result,_FALLBACK_HTTP)
     client_geo = _safe(client_geo, _FALLBACK_CLIENT_GEO)
 
-    # ── Phase 2: 목적지 GeoIP (DNS 결과의 첫 번째 A 레코드 필요) ─────────────
+    # ── Phase 2: 목적지 GeoIP + CDN PoP 교정 ─────────────────────────────────
     a_records = [r for r in dns_result.get("records", []) if r.get("type") == "A"]
     dest_ip = a_records[0]["value"] if a_records else host
 
@@ -94,6 +95,11 @@ async def trace(host: str = Query(..., description="조회할 호스트명 (예:
     dest_geo = dest_geo_map.get(dest_ip) or {
         "lat": 37.4225, "lng": -122.085, "label": "San Francisco, US",
     }
+    asn: int | None = (dest_geo.get("as") or {}).get("asn")
+    if asn and asn in CDN_PROBES:
+        pop = await asyncio.to_thread(fetch_cdn_pop, asn)
+        if pop:
+            dest_geo = {**dest_geo, **pop}
 
     total_ms = int((time.perf_counter() - t_start) * 1000)
 
@@ -113,11 +119,23 @@ async def trace(host: str = Query(..., description="조회할 호스트명 (예:
 # 프론트엔드가 4개를 동시에 호출하고 완료되는 순서대로 UI를 활성화합니다.
 
 async def _geo_for_dns(dns_result: dict, host: str) -> dict:
-    """DNS 결과의 첫 A 레코드로 목적지 GeoIP를 조회합니다."""
+    """
+    DNS 결과의 첫 A 레코드로 목적지 GeoIP를 조회합니다.
+    CDN anycast IP 인 경우 진단 엔드포인트로 실제 PoP 좌표를 교정합니다.
+    """
     a_records = [r for r in dns_result.get("records", []) if r.get("type") == "A"]
     dest_ip = a_records[0]["value"] if a_records else host
+
     dest_geo_map = await asyncio.to_thread(lookup_geo_batch, [dest_ip])
     dest_geo = dest_geo_map.get(dest_ip) or {"lat": 37.4225, "lng": -122.085, "label": "San Francisco, US"}
+
+    # CDN anycast 교정: ASN 이 CDN 이면 실제 PoP 좌표로 덮어씁니다
+    asn: int | None = (dest_geo.get("as") or {}).get("asn")
+    if asn and asn in CDN_PROBES:
+        pop = await asyncio.to_thread(fetch_cdn_pop, asn)
+        if pop:
+            dest_geo = {**dest_geo, **pop}
+
     return _geo_point(dest_geo, dest_ip)
 
 
