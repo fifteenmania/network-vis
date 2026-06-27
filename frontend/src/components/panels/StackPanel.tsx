@@ -7,6 +7,7 @@ import TcpPanel from './TcpPanel'
 import TlsPanel from './TlsPanel'
 import HttpPanel from './HttpPanel'
 import SecurityPanel from './SecurityPanel'
+import ObserverPanel from './ObserverPanel'
 import styles from './StackPanel.module.css'
 
 export default function StackPanel() {
@@ -49,6 +50,8 @@ export default function StackPanel() {
       <TlsPanel tls={tls} status={tlsStatus} />
 
       <HttpPanel http={http} status={httpStatus} />
+
+      <ObserverPanel />
 
       <SecurityPanel
         mitm={tls?.mitm}

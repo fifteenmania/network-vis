@@ -1,0 +1,304 @@
+/* ── 전체 body ── */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.intro {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  color: var(--c-text-dim);
+  line-height: 1.5;
+  padding: 0 1px 2px;
+}
+
+.intro strong {
+  color: var(--c-text-2);
+  font-weight: 600;
+}
+
+/* ── 관찰자 카드 ── */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 11px;
+  border-radius: 5px;
+  background: var(--c-bg-3);
+  border: 1px solid var(--c-border-2);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.cardTitle {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  color: var(--c-text-2);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+}
+
+.cardBadge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.04em;
+  color: var(--c-text-dim);
+  background: var(--c-bg-2);
+  flex-shrink: 0;
+}
+
+.cardSubtitle {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  color: var(--c-text-dim);
+  line-height: 1.4;
+  margin-top: -3px;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 1px;
+}
+
+/* ── 톤 (배지 / 요약) ── */
+.danger { color: var(--c-danger); background: color-mix(in srgb, var(--c-danger) 12%, transparent); }
+.warn   { color: var(--c-warn, #d29922); background: color-mix(in srgb, var(--c-warn, #d29922) 12%, transparent); }
+.green  { color: var(--c-green); background: color-mix(in srgb, var(--c-green) 12%, transparent); }
+
+/* ── 본다 / 못 본다 그룹 ── */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.groupSees,
+.groupHidden {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+}
+
+.groupSees   { color: var(--c-warn, #d29922); }
+.groupHidden { color: var(--c-green); }
+
+.groupRows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ── 본다 행 ── */
+.seesRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+.seesMark {
+  color: var(--c-warn, #d29922);
+  font-size: 8px;
+  line-height: 1.8;
+  flex-shrink: 0;
+}
+
+.rowLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+  color: var(--c-text-dim);
+  min-width: 80px;
+  flex-shrink: 0;
+  font-size: var(--fs-2xs);
+}
+
+.rowValue {
+  font-family: var(--font-mono);
+  color: var(--c-text);
+  word-break: break-all;
+  font-size: var(--fs-2xs);
+  flex: 1;
+}
+
+/* ── 못 본다 행 ── */
+.hiddenRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--fs-2xs);
+  line-height: 1.5;
+}
+
+.hiddenMark {
+  color: var(--c-green);
+  font-size: 9px;
+  line-height: 1.6;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.hiddenText {
+  font-family: var(--font-mono);
+  color: var(--c-text-dim);
+  font-size: var(--fs-2xs);
+}
+
+/* ── 경유 망(관찰자 명단) ── */
+.routeNote {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: var(--c-bg-2);
+  border: 1px solid var(--c-border-2);
+}
+
+.routeLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+}
+
+.routeValue {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--c-text-2);
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* ── 보조 메타 (캐시/TTL) ── */
+.metaNote {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--c-text-dim);
+  opacity: 0.8;
+  padding-top: 1px;
+}
+
+/* ── 방화벽 요약 ── */
+.firewallSummary {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  line-height: 1.55;
+  padding: 7px 9px;
+  border-radius: 4px;
+}
+
+/* ── 대기 중 ── */
+.waiting {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  color: var(--c-text-dim);
+  opacity: 0.6;
+  padding: 1px 0;
+}
+
+/* ── 요약 footer ── */
+.footer {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 9px 11px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--c-green) 5%, var(--c-bg-3));
+  border: 1px solid color-mix(in srgb, var(--c-green) 20%, var(--c-border-2));
+}
+
+.footerMark {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--c-green);
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+
+.footerText {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  color: var(--c-text-2);
+  line-height: 1.55;
+}
+
+.footerText strong {
+  color: var(--c-text);
+  font-weight: 600;
+}
+
+/* ── 툴팁 ── */
+.tipWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.tipIcon {
+  font-size: 9px;
+  color: var(--c-text-dim);
+  opacity: 0.6;
+  line-height: 1;
+  transition: opacity 0.1s;
+}
+
+.tipWrap:hover .tipIcon {
+  opacity: 1;
+}
+
+.tipBox {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  width: 230px;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  padding: 9px 11px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--c-text-2);
+  white-space: pre-line;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+.tipWrap[data-align="left"] .tipBox   { left: 0; }
+.tipWrap[data-align="center"] .tipBox { left: 50%; transform: translateX(-50%); }
+.tipWrap[data-align="right"] .tipBox  { right: 0; }
+
+.tipWrap:hover .tipBox {
+  opacity: 1;
+}
