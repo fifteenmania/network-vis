@@ -1,0 +1,26 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--c-text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.btn:hover {
+  color: var(--c-text-2);
+  border-color: var(--c-border-2);
+  background: var(--c-bg-3);
+}
+
+.btn.copied {
+  color: var(--c-green);
+  border-color: var(--c-green);
+}

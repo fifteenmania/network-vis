@@ -50,6 +50,7 @@ class TraceHop(BaseModel):
     hostname: str | None
     rttMs: list[float]
     location: GeoPoint
+    anycast: bool = False
     as_: AsInfo | None = None
 
     class Config:

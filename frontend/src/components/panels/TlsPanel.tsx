@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TlsResult, SectionStatus } from '../../types/network'
+import { useTraceStore } from '../../store/traceStore'
 import CertChainPanel from './CertChainPanel'
+import CopyButton from '../common/CopyButton'
+import { getCmdForTls } from '../../utils/cmdCommands'
 import styles from './PanelShell.module.css'
 import tlsStyles from './TlsPanel.module.css'
 
@@ -24,6 +27,7 @@ function SkeletonBody() {
 
 export default function TlsPanel({ tls, status }: TlsPanelProps) {
   const { t } = useTranslation()
+  const { target } = useTraceStore()
   const [visibleSteps, setVisibleSteps] = useState(0)
 
   useEffect(() => {
@@ -49,9 +53,12 @@ export default function TlsPanel({ tls, status }: TlsPanelProps) {
         <span className={styles.title}>{t('panels.tls.title')}</span>
         {status === 'loading' && <span className={styles.spinner} />}
         {status === 'done' && tls && (
-          <span className={styles.badge}>
-            {tls.negotiated.version} · {tls.negotiated.handshakeDurationMs}ms
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span className={styles.badge}>
+              {tls.negotiated.version} · {tls.negotiated.handshakeDurationMs}ms
+            </span>
+            {target && <CopyButton command={getCmdForTls(target)} />}
+          </div>
         )}
         {status === 'error' && <span className={styles.badge}>{t('common.error')}</span>}
       </div>

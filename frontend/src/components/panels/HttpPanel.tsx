@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { HttpResult, HttpHeader, SectionStatus } from '../../types/network'
+import { useTraceStore } from '../../store/traceStore'
+import CopyButton from '../common/CopyButton'
+import { getCmdForHttp } from '../../utils/cmdCommands'
 import styles from './PanelShell.module.css'
 import httpStyles from './HttpPanel.module.css'
 
@@ -48,6 +51,7 @@ function SkeletonBody() {
 
 export default function HttpPanel({ http, status }: HttpPanelProps) {
   const { t } = useTranslation()
+  const { target } = useTraceStore()
   const [tab, setTab] = useState<'summary' | 'request' | 'response'>('summary')
 
   const panelClass = status === 'loading' ? styles.loading
@@ -61,7 +65,10 @@ export default function HttpPanel({ http, status }: HttpPanelProps) {
         <span className={styles.title}>{t('panels.http.title')}</span>
         {status === 'loading' && <span className={styles.spinner} />}
         {status === 'done' && http && (
-          <span className={styles.badge}>{http.protocol} · {http.durationMs}ms</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span className={styles.badge}>{http.protocol} · {http.durationMs}ms</span>
+            {target && <CopyButton command={getCmdForHttp(target)} />}
+          </div>
         )}
         {status === 'error' && <span className={styles.badge}>{t('common.error')}</span>}
       </div>

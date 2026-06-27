@@ -16,6 +16,7 @@ interface HopMarkerProps {
 const COLOR = {
   client:      '#3fb950',
   router:      '#8b949e',
+  routerCdn:   '#e3b341',   // anycast CDN 홉
   destination: '#2f81f7',
 }
 
@@ -29,13 +30,15 @@ export default function HopMarker({
   position,
   kind,
   hopIndex,
+  hop,
 }: HopMarkerProps) {
   const meshRef = useRef<THREE.Mesh>(null)
   const { camera } = useThree()
   const { selectedHop, selectHop } = useTraceStore()
 
   const isSelected = selectedHop === hopIndex
-  const color      = COLOR[kind]
+  const colorKey   = kind === 'router' && hop?.anycast ? 'routerCdn' : kind
+  const color      = COLOR[colorKey as keyof typeof COLOR]
   const size       = DOT_SIZE[kind]
 
   useFrame(() => {

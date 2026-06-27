@@ -23,6 +23,7 @@ import threading
 from typing import AsyncIterator
 
 from api.geo import lookup_geo_batch
+from api.cdn_pop import fetch_cdn_pop, CDN_PROBES, ANYCAST_ASNS
 
 # ── 파싱 정규식 ───────────────────────────────────────────────────────────────
 
@@ -80,36 +81,64 @@ def _parse_line(line: str) -> tuple[int, str, list[float]] | None:
 
 # ── hop dict 빌더 ─────────────────────────────────────────────────────────────
 
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """두 위경도 좌표 간의 구면 거리(km)를 반환합니다."""
+    import math
+    R = 6371.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi  = math.radians(lat2 - lat1)
+    dlam  = math.radians(lng2 - lng1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlam / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def _rtt_geo_mismatch(rtt_ms: float, client_geo: dict, hop_geo: dict) -> bool:
+    """
+    RTT 가 GeoIP 위치와 물리적으로 불가능하면 True 를 반환합니다.
+    광섬유 속도 ~200km/ms 기준으로 최대 가능 거리를 계산하고,
+    1.5x 여유(라우팅 우회 고려)를 적용합니다.
+    """
+    if rtt_ms <= 0:
+        return False
+    clat = client_geo.get("lat", 0)
+    clng = client_geo.get("lng", 0)
+    hlat = hop_geo.get("lat", 0)
+    hlng = hop_geo.get("lng", 0)
+    if clat == 0 and clng == 0:
+        return False
+    max_km = rtt_ms * 100 * 1.5   # 편도 = rtt/2, 200km/ms, 1.5x 여유
+    actual_km = _haversine_km(clat, clng, hlat, hlng)
+    return actual_km > max_km
+
+
 def _build_hop(
     hop_num: int,
     ip: str,
     rtts: list[float],
     geo: dict,
-    last_known_geo: dict,
+    anycast: bool,
 ) -> dict:
     """파싱 결과와 GeoIP 데이터를 프론트엔드 TraceHop 구조로 변환합니다."""
     if not ip:
-        location = dict(last_known_geo) if last_known_geo \
-                   else {"lat": 0, "lng": 0, "label": "Unknown", "ip": "*"}
         return {
             "hop": hop_num,
             "ip": "*",
             "hostname": None,
             "rttMs": [],
-            "location": location,
+            "anycast": False,
+            "location": {"lat": 0, "lng": 0, "label": "Unknown"},
             "as": None,
         }
 
-    fallback = dict(last_known_geo) if last_known_geo \
-               else {"lat": 0, "lng": 0, "label": "Unknown", "ip": ip}
-    used_geo = geo or fallback
+    used_geo = geo if geo else {"lat": 0, "lng": 0, "label": "Unknown", "ip": ip}
 
     return {
         "hop": hop_num,
         "ip": ip,
         "hostname": None,
         "rttMs": rtts if rtts else [0.0],
-        "location": {k: v for k, v in used_geo.items() if k != "as"},
+        "anycast": anycast,
+        "location": {k: v for k, v in used_geo.items() if k not in ("as", "iata")},
         "as": used_geo.get("as"),
     }
 
@@ -180,7 +209,8 @@ async def stream_traceroute(
     )
     thread.start()
 
-    last_known_geo: dict = {}
+    cdn_pop_cache: dict[int, dict | None] = {}  # ASN → PoP 좌표 (None=조회 실패)
+    client_geo: dict = {}                        # RTT 물리 검증용 클라이언트 위치
 
     while True:
         item = await queue.get()
@@ -195,16 +225,43 @@ async def stream_traceroute(
         hop_num, ip, rtts = parsed
 
         geo: dict = {}
+        anycast: bool = False
+
         if ip:
+            # GeoIP 조회
             try:
                 geo_map = await asyncio.to_thread(lookup_geo_batch, [ip])
                 geo = geo_map.get(ip, {})
             except Exception:
                 geo = {}
-            if geo:
-                last_known_geo = geo
 
-        yield _build_hop(hop_num, ip, rtts, geo, last_known_geo)
+            # 첫 번째 유효한 공인 홉을 클라이언트 위치 기준으로 사용
+            if not client_geo and geo and geo.get("lat") and geo.get("lng"):
+                client_geo = geo
+
+            asn: int | None = (geo.get("as") or {}).get("asn")
+
+            # CDN PoP 교정 (Cloudflare / CloudFront / Fastly)
+            if asn and asn in CDN_PROBES:
+                if asn not in cdn_pop_cache:
+                    cdn_pop_cache[asn] = await asyncio.to_thread(fetch_cdn_pop, asn)
+                pop = cdn_pop_cache[asn]
+                if pop:
+                    # GeoIP 좌표를 실제 PoP 좌표로 교정, AS 정보는 유지
+                    geo = {**geo, **pop}
+                anycast = True
+
+            # PoP 조회 없는 알려진 anycast CDN (Akamai, Google 등)
+            elif asn and asn in ANYCAST_ASNS:
+                anycast = True
+
+            # RTT 물리 검증: GeoIP 가 존재하고 위치가 이상하면 anycast 의심
+            elif geo and rtts and client_geo:
+                avg_rtt = sum(rtts) / len(rtts)
+                if _rtt_geo_mismatch(avg_rtt, client_geo, geo):
+                    anycast = True
+
+        yield _build_hop(hop_num, ip, rtts, geo, anycast)
 
 
 # ── 하위 호환 배치 버전 (레거시 /api/trace 엔드포인트용) ──────────────────────

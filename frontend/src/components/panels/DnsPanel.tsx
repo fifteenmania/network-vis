@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DnsResult, DnsChainStep, SectionStatus } from '../../types/network'
+import { useTraceStore } from '../../store/traceStore'
+import CopyButton from '../common/CopyButton'
+import { getCmdForDns, getCmdForDnsStep } from '../../utils/cmdCommands'
 import styles from './PanelShell.module.css'
 import chainStyles from './DnsChainPanel.module.css'
 
@@ -46,6 +49,9 @@ function DnsChainView({ chain }: { chain: DnsChainStep[] }) {
               <span className={chainStyles.nodeType}>{step.serverType.toUpperCase()}</span>
               <span className={chainStyles.nodeLabel}>{step.serverLabel}</span>
               <span className={chainStyles.nodeIp}>{step.server}</span>
+              <div className={chainStyles.nodeCopyBtn}>
+                <CopyButton command={getCmdForDnsStep(step.query, step.server)} />
+              </div>
             </div>
 
             <div className={chainStyles.arrow}>
@@ -77,6 +83,7 @@ function DnsChainView({ chain }: { chain: DnsChainStep[] }) {
 
 export default function DnsPanel({ dns, status }: DnsPanelProps) {
   const { t } = useTranslation()
+  const { target } = useTraceStore()
   const [chainOpen, setChainOpen] = useState(false)
 
   const panelClass = status === 'loading' ? styles.loading
@@ -89,7 +96,12 @@ export default function DnsPanel({ dns, status }: DnsPanelProps) {
       <div className={styles.header}>
         <span className={styles.title}>{t('panels.dns.title')}</span>
         {status === 'loading' && <span className={styles.spinner} />}
-        {status === 'done' && dns && <span className={styles.badge}>{dns.durationMs}ms</span>}
+        {status === 'done' && dns && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span className={styles.badge}>{dns.durationMs}ms</span>
+            {target && <CopyButton command={getCmdForDns(target)} />}
+          </div>
+        )}
         {status === 'error' && <span className={styles.badge}>{t('common.error')}</span>}
       </div>
 

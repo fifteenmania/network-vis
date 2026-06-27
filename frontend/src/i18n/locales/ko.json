@@ -2,7 +2,9 @@
   "appTitle": "Network Stack Visualizer",
   "common": {
     "error": "오류",
-    "cancel": "취소"
+    "cancel": "취소",
+    "copyCmdTooltip": "CMD 명령어 복사",
+    "copied": "복사됨"
   },
   "search": {
     "placeholder": "호스트명 입력 (예: api.openai.com)",
@@ -47,6 +49,7 @@
       "org": "기관",
       "country": "국가",
       "prefix": "Prefix",
+      "anycast": "CDN",
       "error": "Traceroute 실행에 실패했습니다."
     },
     "tcp": {

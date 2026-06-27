@@ -49,6 +49,7 @@ export interface TraceHop {
   hostname?: string
   rttMs: number[]
   location: GeoPoint
+  anycast?: boolean       // 애니캐스트 CDN 홉 여부
   as?: AsInfo             // BGP AS 정보 (Python: ipwhois or RIPE API)
 }
 

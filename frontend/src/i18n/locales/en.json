@@ -2,7 +2,9 @@
   "appTitle": "Network Stack Visualizer",
   "common": {
     "error": "Error",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "copyCmdTooltip": "Copy CMD command",
+    "copied": "Copied!"
   },
   "search": {
     "placeholder": "Enter hostname (e.g. api.openai.com)",
@@ -47,6 +49,7 @@
       "org": "Org",
       "country": "Country",
       "prefix": "Prefix",
+      "anycast": "CDN",
       "error": "Traceroute failed."
     },
     "tcp": {

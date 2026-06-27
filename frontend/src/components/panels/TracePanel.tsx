@@ -2,6 +2,8 @@ import { useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TraceHop, SectionStatus } from '../../types/network'
 import { useTraceStore } from '../../store/traceStore'
+import CopyButton from '../common/CopyButton'
+import { getCmdForTracert } from '../../utils/cmdCommands'
 import styles from './PanelShell.module.css'
 import traceStyles from './TracePanel.module.css'
 
@@ -40,7 +42,7 @@ function SkeletonBody() {
 
 export default function TracePanel({ hops, visibleCount, status }: TracePanelProps) {
   const { t } = useTranslation()
-  const { selectedHop, selectHop } = useTraceStore()
+  const { selectedHop, selectHop, target } = useTraceStore()
   const rowRefs = useRef<(HTMLTableRowElement | null)[]>([])
 
   useEffect(() => {
@@ -55,22 +57,26 @@ export default function TracePanel({ hops, visibleCount, status }: TracePanelPro
     : ''
 
   const visibleHops = hops?.slice(0, visibleCount) ?? []
+  const hasData = (hops?.length ?? 0) > 0
 
   return (
     <div className={`${styles.panel} ${panelClass}`}>
       <div className={styles.header}>
         <span className={styles.title}>{t('panels.trace.title')}</span>
         {status === 'loading' && <span className={styles.spinner} />}
-        {status === 'done' && hops && (
-          <span className={styles.badge}>{visibleCount}/{hops.length} hops</span>
+        {(status === 'loading' || status === 'done') && hops && hops.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span className={styles.badge}>{visibleCount}{status === 'done' ? `/${hops.length}` : ''} hops</span>
+            {status === 'done' && target && <CopyButton command={getCmdForTracert(target)} />}
+          </div>
         )}
         {status === 'error' && <span className={styles.badge}>{t('common.error')}</span>}
       </div>
 
-      {status === 'loading' && <SkeletonBody />}
+      {status === 'loading' && !hasData && <SkeletonBody />}
       {status === 'error' && <div className={styles.dim}>{t('panels.trace.error')}</div>}
 
-      {status === 'done' && hops && (
+      {(status === 'loading' || status === 'done') && hasData && (
         <>
           <div className={traceStyles.tableWrapper}>
             <table className={styles.table}>
@@ -85,9 +91,13 @@ export default function TracePanel({ hops, visibleCount, status }: TracePanelPro
               </thead>
               <tbody>
                 {visibleHops.map((hop, i) => {
-                  const avgRtt = hop.rttMs.reduce((a, b) => a + b, 0) / hop.rttMs.length
+                  const hasRtt = hop.rttMs.length > 0
+                  const avgRtt = hasRtt
+                    ? hop.rttMs.reduce((a, b) => a + b, 0) / hop.rttMs.length
+                    : null
                   const isSelected = selectedHop === i
                   const color = hop.as ? asColor(hop.as.asn) : 'var(--c-text-dim)'
+                  const isUnknownLoc = hop.location.lat === 0 && hop.location.lng === 0
 
                   return (
                     <tr
@@ -117,10 +127,17 @@ export default function TracePanel({ hops, visibleCount, status }: TracePanelPro
                           <span className={styles.dim}>—</span>
                         )}
                       </td>
-                      <td className={styles.dim} style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {hop.location.label}
+                      <td className={styles.dim} style={{ maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {isUnknownLoc ? '—' : hop.location.label}
+                        {hop.anycast && !isUnknownLoc && (
+                          <span className={traceStyles.anycastBadge}>
+                            {t('panels.trace.anycast')}
+                          </span>
+                        )}
                       </td>
-                      <td style={{ color: rttColor(avgRtt) }}>{avgRtt.toFixed(1)}ms</td>
+                      <td style={{ color: avgRtt !== null ? rttColor(avgRtt) : 'var(--c-text-dim)' }}>
+                        {avgRtt !== null ? `${avgRtt.toFixed(1)}ms` : '—'}
+                      </td>
                     </tr>
                   )
                 })}

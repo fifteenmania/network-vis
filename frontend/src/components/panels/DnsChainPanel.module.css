@@ -39,6 +39,7 @@
 }
 
 .node {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -46,6 +47,12 @@
   border: 1px solid var(--c-border);
   border-radius: 4px;
   background: var(--c-bg-3);
+}
+
+.nodeCopyBtn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
 }
 
 .nodeType {
