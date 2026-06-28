@@ -1,81 +1,104 @@
 # Network Stack Visualizer
 
-도메인 하나를 입력하면 **DNS → Traceroute → TCP → TLS → HTTP** 전 과정을 실시간으로 시각화하는 네트워크 진단 도구입니다.  
-3D 지구본 위에 실제 라우팅 경로가 호(arc)로 그려지고, 각 홉의 RTT·AS 정보·지리 위치를 패널에서 확인할 수 있습니다.
+사내망에서 서비스가 차단됐을 때 **어느 레이어(DNS / IP / SNI / HTTP)에서 막혔는지** 실시간으로 보여주는 네트워크 진단 도구.  
+도메인을 입력하면 DNS → Traceroute → TLS → HTTP 전 과정을 3D 지구본과 패널로 시각화하고, 기업 방화벽의 SSL Inspection 여부까지 판정합니다.
 
-![screenshot](docs/screenshot.png)
+![메인 화면](docs/screenshot-globe.png)
 
 ---
 
 ## 주요 기능
 
 | 기능 | 설명 |
-|------|------|
-| **3D 글로브** | Three.js 기반 지구본에 traceroute 경로를 실시간 스트리밍 표시 |
-| **DNS 조회** | A/AAAA/CNAME 레코드 체인 시각화 |
-| **Traceroute** | RTT 기반 색상 arc (녹색 → 노랑 → 주황 → 빨강) |
-| **TCP 연결** | SYN → SYN-ACK → ACK 3-way handshake 단계 표시 |
+|---|---|
+| **3D 글로브** | Traceroute 홉을 RTT 기반 색상 arc로 실시간 스트리밍 표시 |
+| **DNS 체인** | Root NS → TLD NS → Authoritative NS 재귀 조회 과정 시각화 |
+| **Traceroute** | 홉별 AS·위치·RTT. 사설 IP 홉은 "내부망"으로 자동 구분 |
 | **TLS 핸드셰이크** | 버전·암호 스위트·인증서 체인 파싱 |
-| **HTTP 프로브** | 상태 코드·응답 헤더·리다이렉트 체인 |
-| **MITM 탐지** | 공개 CA(certifi) vs OS(사내 CA) 신뢰저장소 이중 검증으로 SSL Inspection(기업 방화벽) 탐지 |
-| **다국어** | 한국어 / English 전환 지원 |
+| **HTTP 프로브** | 상태 코드·헤더. SSL Inspection 환경에서도 실제 상태 반환 |
+| **보안 진단** | 방화벽 차단 레이어 판정 + SSL Inspection 탐지 |
+| **다국어** | 한국어 / English |
+
+---
+
+## 보안 진단
+
+![보안 진단 패널](docs/screenshot-security.png)
+
+**차단 레이어 판정** — DNS / IP / SNI(도메인) / HTTP 중 어디서 막혔는지 표시합니다.
+
+**SSL Inspection 탐지** — 공개 CA 번들(certifi)과 OS 신뢰저장소로 인증서를 이중 검증합니다.  
+공개 CA로는 실패하지만 PC의 저장소로는 성공하면 → 방화벽이 TLS를 복호화하는 중(`INTERCEPTED`).
+
+```
+certifi(공개 CA)로 검증 실패
+        ↓
+OS 신뢰저장소(사내 CA)로 검증 성공
+        ↓
+INTERCEPTED — 방화벽이 내용을 열어보고 있음
+```
 
 ---
 
 ## 기술 스택
 
-**Backend** — Python 3.13+, FastAPI, uvicorn, truststore (OS 신뢰저장소 기반 MITM 탐지)  
+**Backend** — Python 3.13+, FastAPI, uvicorn, certifi, truststore  
 **Frontend** — React 19, TypeScript, Vite, Three.js (`@react-three/fiber`), Zustand
 
 ---
 
-## 셋업 (로컬 실행)
+## 셋업
 
 ### 사전 요구사항
 
-- [uv](https://docs.astral.sh/uv/) (Python 패키지 매니저)
-- Node.js **20** 이상 (npm 포함)
-- Windows: `tracert` 명령이 PATH에 있어야 합니다 (기본 포함)
-- macOS/Linux: `traceroute` 패키지 설치 필요
+- [uv](https://docs.astral.sh/uv/)
+- Node.js 20+
+- Windows: `tracert` 기본 포함 / macOS·Linux: `traceroute` 설치 필요
 
-### 1. 저장소 클론
-
-```bash
-git clone https://github.com/your-username/network-vis.git
-cd network-vis
-```
-
-### 2. 백엔드 설정
+### 실행
 
 ```bash
+# 백엔드
 uv sync
-```
-
-### 3. 백엔드 실행
-
-```bash
 uv run uvicorn main:app --reload --port 8000
-```
 
-> API 서버가 `http://localhost:8000` 에서 실행됩니다.
-
-### 4. 프론트엔드 설정 및 실행
-
-```bash
+# 프론트엔드 (별도 터미널)
 cd frontend
 npm install
 npm run dev
 ```
 
-> 개발 서버가 `http://localhost:5173` 에서 실행됩니다.
+브라우저에서 `http://localhost:5173` 접속 후 도메인 입력.
 
-### 5. 브라우저에서 열기
+### 팀 공유 시
 
+프론트엔드를 빌드해 공용 서버에 올린 뒤 각 PC에서 백엔드만 실행:
+
+```bash
+# 프론트엔드 빌드
+cd frontend && npm run build
+
+# 백엔드 환경변수로 프론트 API 경로 지정 (기본값: http://localhost:8000/api)
+VITE_API_BASE=http://localhost:8000/api npm run build
 ```
-http://localhost:5173
+
+### 테스트
+
+```bash
+uv run pytest -q
 ```
 
-상단 입력창에 도메인(예: `api.openai.com`)을 입력하고 **Trace 시작** 버튼을 클릭하면 됩니다.
+---
+
+## API 엔드포인트
+
+| 엔드포인트 | 설명 |
+|---|---|
+| `GET /api/dns?host=` | DNS 체인 + GeoIP |
+| `GET /api/traceroute?host=` | Traceroute SSE 스트리밍 |
+| `GET /api/tls?host=` | TLS 핸드셰이크 + 인증서 + MITM/차단 진단 |
+| `GET /api/http?host=` | HTTP 프로브 |
+| `GET /health` | 헬스 체크 |
 
 ---
 
@@ -83,38 +106,26 @@ http://localhost:5173
 
 ```
 network-vis/
-├── main.py              # FastAPI 앱 진입점
-├── pyproject.toml       # Python 의존성
+├── main.py
+├── pyproject.toml
 ├── api/
-│   ├── router.py        # API 엔드포인트 (/api/dns, /api/hops, /api/tls, ...)
-│   ├── traceroute.py    # traceroute 스트리밍 + GeoIP 조회
-│   ├── dns_lookup.py    # DNS 레코드 체인 조회
-│   ├── tls.py           # TLS 핸드셰이크 파싱
+│   ├── router.py        # API 엔드포인트
+│   ├── traceroute.py    # Traceroute 스트리밍 + GeoIP
+│   ├── dns_lookup.py    # DNS 재귀 체인
+│   ├── tls.py           # TLS + 신뢰저장소 이중 검증
 │   ├── http_probe.py    # HTTP 프로브
-│   ├── mitm.py          # MITM(SSL Inspection) 탐지 — 신뢰저장소 이중 검증
-│   ├── geo.py           # IP → 위경도 변환 (GeoIP)
-│   └── ipclass.py       # 사설 IP(내부망) 분류
+│   ├── mitm.py          # SSL Inspection 탐지
+│   ├── geo.py           # GeoIP
+│   └── ipclass.py       # 사설 IP 분류
+├── tests/
 └── frontend/
-    ├── package.json
     └── src/
         ├── components/
-        │   ├── globe/   # Three.js 3D 지구본 컴포넌트
-        │   └── panels/  # DNS·Traceroute·TLS·HTTP 정보 패널
-        ├── store/       # Zustand 전역 상태
-        └── utils/       # geo 변환 등 유틸리티
+        │   ├── globe/   # Three.js 지구본
+        │   └── panels/  # 진단 패널
+        ├── store/       # Zustand 상태
+        └── utils/
 ```
-
----
-
-## API 엔드포인트
-
-| 엔드포인트 | 메서드 | 설명 |
-|-----------|--------|------|
-| `GET /api/dns?host=<domain>` | GET | DNS 레코드 체인 + 클라이언트/목적지 GeoIP |
-| `GET /api/traceroute?host=<domain>` | GET (SSE) | Traceroute 스트리밍 |
-| `GET /api/tls?host=<domain>` | GET | TLS 핸드셰이크 + 인증서 체인 + MITM/차단 진단 |
-| `GET /api/http?host=<domain>` | GET | HTTP 프로브 결과 |
-| `GET /health` | GET | 헬스 체크 |
 
 ---
 
