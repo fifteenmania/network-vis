@@ -11,6 +11,7 @@ import ssl
 import time
 from dataclasses import dataclass, asdict
 
+import certifi
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, ed25519, ed448
@@ -90,7 +91,7 @@ def _get_ocsp_url(cert: x509.Certificate) -> str | None:
     return None
 
 
-def _parse_cert(der: bytes, is_root: bool) -> CertInfo:
+def _parse_cert(der: bytes, is_root: bool, is_trusted: bool = False) -> CertInfo:
     cert = x509.load_der_x509_certificate(der, default_backend())
 
     def dn(name: x509.Name) -> str:
@@ -120,7 +121,7 @@ def _parse_cert(der: bytes, is_root: bool) -> CertInfo:
         san=_get_san(cert),
         ocspUrl=_get_ocsp_url(cert),
         isRoot=is_root,
-        isTrusted=True,
+        isTrusted=is_trusted,
         spkiFingerprint=spki_fp,
         certFingerprint=cert_fp,
     )
@@ -134,6 +135,64 @@ _OID_MAP = {
     "2.5.4.10": "O",
     "2.5.4.11": "OU",
 }
+
+
+# ── 신뢰저장소 이중 검증 ──────────────────────────────────────────────────────
+
+def _load_truststore_context() -> ssl.SSLContext | None:
+    """
+    OS(사내 CA 포함) 신뢰저장소를 사용하는 검증 컨텍스트를 생성합니다.
+    truststore 패키지 미설치 시 None을 반환합니다.
+    """
+    try:
+        import truststore
+        ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = True
+        ctx.verify_mode = ssl.CERT_REQUIRED
+        return ctx
+    except Exception:
+        return None
+
+
+def _verify_handshake(hostname: str, port: int, ctx: ssl.SSLContext, timeout: float = 8.0) -> bool | None:
+    """
+    주어진 신뢰저장소 컨텍스트로 검증된 TLS 핸드셰이크를 시도합니다.
+
+    반환:
+      True  — 인증서 체인이 해당 저장소로 검증됨
+      False — 인증서 검증 실패 (신뢰 불가)
+      None  — 네트워크 오류 등으로 판정 불가
+    """
+    try:
+        with socket.create_connection((hostname, port), timeout=timeout) as s:
+            with ctx.wrap_socket(s, server_hostname=hostname):
+                return True
+    except ssl.SSLCertVerificationError:
+        return False
+    except ssl.SSLError:
+        return False
+    except Exception:
+        return None
+
+
+def _verify_trust(hostname: str, port: int) -> tuple[bool | None, bool | None]:
+    """
+    공개 CA 번들(certifi)과 OS 신뢰저장소로 각각 검증을 시도합니다.
+
+    SSL Inspection(사내 방화벽 가로채기) 탐지의 핵심:
+      - 공개로는 실패하지만 OS(사내 CA 설치됨)로는 성공 → 가로채기 강력 의심
+
+    반환: (public_trusted, os_trusted)
+    """
+    public_ctx = ssl.create_default_context(cafile=certifi.where())
+    public_ctx.check_hostname = True
+    public_ctx.verify_mode = ssl.CERT_REQUIRED
+    public_trusted = _verify_handshake(hostname, port, public_ctx)
+
+    os_ctx = _load_truststore_context()
+    os_trusted = _verify_handshake(hostname, port, os_ctx) if os_ctx is not None else None
+
+    return public_trusted, os_trusted
 
 
 def get_cert_chain(hostname: str, port: int = 443) -> dict:
@@ -192,15 +251,21 @@ def get_cert_chain(hostname: str, port: int = 443) -> dict:
     tls_ver = tls_sock.version() or "TLS"
     cipher_name, _, key_bits = tls_sock.cipher() or ("unknown", None, None)
 
+    # 단계별 소요시간은 ssl 모듈로 개별 측정이 불가능하므로 0(미측정)으로 둡니다.
+    # 실제 측정값인 전체 핸드셰이크 시간은 negotiated.handshakeDurationMs에 담깁니다.
     steps += [
-        TlsStep("ClientHello", f"클라이언트 Hello 전송 (SNI: {hostname})", hs_ms // 4,
-                detail="Supported versions, cipher suites, extensions"),
-        TlsStep("ServerHello", f"서버 Hello 수신 → {tls_ver}", hs_ms // 4,
+        TlsStep("ClientHello", f"클라이언트 Hello 전송 (SNI: {hostname})", 0,
+                detail="지원 TLS 버전 · 암호 스위트 · 확장 전송"),
+        TlsStep("ServerHello", f"서버 Hello 수신 → {tls_ver}", 0,
                 detail=f"Cipher: {cipher_name}"),
-        TlsStep("Certificate", "서버 인증서 체인 수신", hs_ms // 4),
-        TlsStep("Finished", "핸드셰이크 완료 — 암호화 채널 수립", hs_ms // 4,
+        TlsStep("Certificate", "서버 인증서 체인 수신", 0),
+        TlsStep("Finished", f"핸드셰이크 완료 — 암호화 채널 수립 (총 {hs_ms}ms)", 0,
                 detail=f"Key bits: {key_bits}"),
     ]
+
+    # ── 신뢰저장소 이중 검증 (공개 CA vs OS/사내 저장소) ───────────────────────
+    public_trusted, os_trusted = _verify_trust(hostname, port)
+    chain_trusted = public_trusted is True
 
     # ── 인증서 체인 파싱 ──────────────────────────────────────────────────────
     cert_chain: list[CertInfo] = []
@@ -216,7 +281,7 @@ def get_cert_chain(hostname: str, port: int = 443) -> dict:
                 is_root = (i == len(chain_objs) - 1)
                 der = cert_obj.public_bytes(ssl.ENCODING_DER)
                 der_list.append(der)
-                cert_chain.append(_parse_cert(der, is_root))
+                cert_chain.append(_parse_cert(der, is_root, is_trusted=chain_trusted))
     except AttributeError:
         # Python 3.12 이하: leaf cert만 가져올 수 있음
         pass
@@ -226,14 +291,19 @@ def get_cert_chain(hostname: str, port: int = 443) -> dict:
             der = tls_sock.getpeercert(binary_form=True)
             if der:
                 der_list.append(der)
-                cert_chain.append(_parse_cert(der, is_root=False))
+                cert_chain.append(_parse_cert(der, is_root=False, is_trusted=chain_trusted))
         except Exception:
             pass
 
     tls_sock.close()
 
-    # ── MITM 판정 ─────────────────────────────────────────────────────────────
-    mitm = analyze_chain(hostname, der_list, full_chain=full_chain_available) if der_list else None
+    # ── MITM 판정 (신뢰저장소 이중 검증 결과 + 인증서 증거) ────────────────────
+    mitm = analyze_chain(
+        hostname, der_list,
+        public_trusted=public_trusted,
+        os_trusted=os_trusted,
+        full_chain=full_chain_available,
+    ) if der_list else None
 
     # ── 차단 유형 판정 ────────────────────────────────────────────────────────
     block = diagnose_block(

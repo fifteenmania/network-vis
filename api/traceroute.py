@@ -24,6 +24,7 @@ from typing import AsyncIterator
 
 from api.geo import lookup_geo_batch
 from api.cdn_pop import fetch_cdn_pop, CDN_PROBES, ANYCAST_ASNS
+from api.ipclass import is_internal_ip
 
 # ── 파싱 정규식 ───────────────────────────────────────────────────────────────
 
@@ -117,6 +118,7 @@ def _build_hop(
     rtts: list[float],
     geo: dict,
     anycast: bool,
+    internal: bool = False,
 ) -> dict:
     """파싱 결과와 GeoIP 데이터를 프론트엔드 TraceHop 구조로 변환합니다."""
     if not ip:
@@ -126,11 +128,16 @@ def _build_hop(
             "hostname": None,
             "rttMs": [],
             "anycast": False,
+            "internal": False,
             "location": {"lat": 0, "lng": 0, "label": "Unknown"},
             "as": None,
         }
 
-    used_geo = geo if geo else {"lat": 0, "lng": 0, "label": "Unknown", "ip": ip}
+    if internal:
+        # 사설 IP는 공인 GeoIP 위치가 없으므로 내부망으로 표기합니다.
+        used_geo = {"lat": 0, "lng": 0, "label": "내부망 (사설 IP)", "ip": ip}
+    else:
+        used_geo = geo if geo else {"lat": 0, "lng": 0, "label": "Unknown", "ip": ip}
 
     return {
         "hop": hop_num,
@@ -138,6 +145,7 @@ def _build_hop(
         "hostname": None,
         "rttMs": rtts if rtts else [0.0],
         "anycast": anycast,
+        "internal": internal,
         "location": {k: v for k, v in used_geo.items() if k not in ("as", "iata")},
         "as": used_geo.get("as"),
     }
@@ -226,8 +234,13 @@ async def stream_traceroute(
 
         geo: dict = {}
         anycast: bool = False
+        internal: bool = False
 
         if ip:
+            internal = is_internal_ip(ip)
+
+        # 사설 IP(내부망)는 공인 GeoIP가 없으므로 외부 조회를 건너뜁니다.
+        if ip and not internal:
             # GeoIP 조회
             try:
                 geo_map = await asyncio.to_thread(lookup_geo_batch, [ip])
@@ -261,7 +274,7 @@ async def stream_traceroute(
                 if _rtt_geo_mismatch(avg_rtt, client_geo, geo):
                     anycast = True
 
-        yield _build_hop(hop_num, ip, rtts, geo, anycast)
+        yield _build_hop(hop_num, ip, rtts, geo, anycast, internal)
 
 
 # ── 하위 호환 배치 버전 (레거시 /api/trace 엔드포인트용) ──────────────────────

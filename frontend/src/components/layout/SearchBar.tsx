@@ -1,23 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTraceStore } from '../../store/traceStore'
-import { openaiTrace } from '../../data/mock/openaiTrace'
 import type { TraceHop } from '../../types/network'
 import styles from './SearchBar.module.css'
 
-const API_BASE = 'http://localhost:8000/api'
-
-/** mock 데이터를 섹션별로 store에 직접 주입 */
-function injectMock() {
-  const s = useTraceStore.getState()
-  s.setDns(openaiTrace.dns, {
-    client: openaiTrace.client,
-    destination: openaiTrace.destination,
-  })
-  s.setHops(openaiTrace.hops)
-  s.setTls(openaiTrace.tls)
-  s.setHttp(openaiTrace.http)
-}
+const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000/api'
 
 /**
  * SSE 스트림을 읽어 hop을 store에 순차적으로 주입합니다.
@@ -140,13 +127,11 @@ export default function SearchBar() {
 
     const handleFetchError = (section: 'dns' | 'hops' | 'tls' | 'http', err: unknown) => {
       if ((err as Error).name === 'AbortError') return
-      const isNetworkError = err instanceof TypeError
-      if (isNetworkError && section === 'dns') {
-        showError(t('search.fallbackNotice'))
-        injectMock()
-      } else {
-        useTraceStore.getState().setSectionError(section)
+      // TypeError = fetch 자체 실패(백엔드 미실행/네트워크). 가짜 데이터로 가리지 않고 명확히 알림.
+      if (err instanceof TypeError) {
+        showError(t('search.backendError'))
       }
+      useTraceStore.getState().setSectionError(section)
     }
 
     // DNS — geo 포함

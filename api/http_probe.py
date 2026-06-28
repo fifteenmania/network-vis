@@ -41,6 +41,23 @@ def _is_pseudo(name: str) -> bool:
     return name.startswith(":")
 
 
+def _verify_ctx():
+    """
+    httpx 검증에 사용할 컨텍스트를 반환합니다.
+
+    사내망 SSL Inspection 환경에서는 사내 CA가 OS 신뢰저장소에만 설치돼 있어
+    공개 번들(certifi)만으로는 검증이 실패합니다. truststore로 OS 신뢰저장소를
+    사용하면 브라우저처럼 동작해 실제 HTTP 상태를 확인할 수 있습니다.
+    truststore 미설치 시 기본 검증(True)으로 폴백합니다.
+    """
+    try:
+        import ssl
+        import truststore
+        return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    except Exception:
+        return True
+
+
 def _build_request_headers(url: str, extra: dict) -> list[HttpHeader]:
     from urllib.parse import urlparse
     parsed = urlparse(url)
@@ -73,7 +90,7 @@ async def probe_http(url: str) -> dict:
             http2=True,
             follow_redirects=True,
             timeout=15,
-            verify=True,
+            verify=_verify_ctx(),
         ) as client:
             response = await client.get(url, headers=req_extra)
             duration_ms = int((time.perf_counter() - t0) * 1000)

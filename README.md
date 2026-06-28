@@ -17,14 +17,14 @@
 | **TCP 연결** | SYN → SYN-ACK → ACK 3-way handshake 단계 표시 |
 | **TLS 핸드셰이크** | 버전·암호 스위트·인증서 체인 파싱 |
 | **HTTP 프로브** | 상태 코드·응답 헤더·리다이렉트 체인 |
-| **MITM 탐지** | 인증서 발급자 분석으로 SSL Inspection(기업 방화벽) 탐지 |
+| **MITM 탐지** | 공개 CA(certifi) vs OS(사내 CA) 신뢰저장소 이중 검증으로 SSL Inspection(기업 방화벽) 탐지 |
 | **다국어** | 한국어 / English 전환 지원 |
 
 ---
 
 ## 기술 스택
 
-**Backend** — Python 3.14+, FastAPI, uvicorn  
+**Backend** — Python 3.13+, FastAPI, uvicorn, truststore (OS 신뢰저장소 기반 MITM 탐지)  
 **Frontend** — React 19, TypeScript, Vite, Three.js (`@react-three/fiber`), Zustand
 
 ---
@@ -91,9 +91,9 @@ network-vis/
 │   ├── dns_lookup.py    # DNS 레코드 체인 조회
 │   ├── tls.py           # TLS 핸드셰이크 파싱
 │   ├── http_probe.py    # HTTP 프로브
-│   ├── mitm.py          # MITM(SSL Inspection) 탐지
+│   ├── mitm.py          # MITM(SSL Inspection) 탐지 — 신뢰저장소 이중 검증
 │   ├── geo.py           # IP → 위경도 변환 (GeoIP)
-│   └── as_info.py       # ASN 조회
+│   └── ipclass.py       # 사설 IP(내부망) 분류
 └── frontend/
     ├── package.json
     └── src/
@@ -110,9 +110,9 @@ network-vis/
 
 | 엔드포인트 | 메서드 | 설명 |
 |-----------|--------|------|
-| `GET /api/dns?host=<domain>` | GET | DNS 레코드 체인 |
-| `GET /api/hops?host=<domain>` | GET (SSE) | Traceroute 스트리밍 |
-| `GET /api/tls?host=<domain>` | GET | TLS 핸드셰이크 정보 |
+| `GET /api/dns?host=<domain>` | GET | DNS 레코드 체인 + 클라이언트/목적지 GeoIP |
+| `GET /api/traceroute?host=<domain>` | GET (SSE) | Traceroute 스트리밍 |
+| `GET /api/tls?host=<domain>` | GET | TLS 핸드셰이크 + 인증서 체인 + MITM/차단 진단 |
 | `GET /api/http?host=<domain>` | GET | HTTP 프로브 결과 |
 | `GET /health` | GET | 헬스 체크 |
 

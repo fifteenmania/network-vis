@@ -50,7 +50,8 @@ export interface TraceHop {
   rttMs: number[]
   location: GeoPoint
   anycast?: boolean       // 애니캐스트 CDN 홉 여부
-  as?: AsInfo             // BGP AS 정보 (Python: ipwhois or RIPE API)
+  internal?: boolean      // 사설 IP(내부망) 홉 여부 — GeoIP 위치 없음
+  as?: AsInfo             // BGP AS 정보
 }
 
 // TLS 인증서 체인
@@ -110,7 +111,7 @@ export interface HttpResult {
 export type MitmVerdict = 'INTERCEPTED' | 'SUSPICIOUS' | 'CLEAN' | 'ERROR'
 
 export interface MitmEvidence {
-  type: 'issuer_unknown' | 'proxy_keyword'
+  type: 'issuer_unknown' | 'proxy_keyword' | 'trust_store_mismatch'
   detail: string
 }
 
@@ -120,6 +121,7 @@ export interface MitmResult {
   issuerOrg: string
   issuerCN: string
   validityDays: number | null
+  osTrusted?: boolean | null   // OS(사내 CA 포함) 신뢰저장소 검증 결과
 }
 
 export type BlockType =

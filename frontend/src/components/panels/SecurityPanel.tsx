@@ -195,6 +195,10 @@ const MITM_VERDICT_META: Record<MitmVerdict, { label: string; cls: string; icon:
 }
 
 const EVIDENCE_META: Record<string, { label: string; explain: string }> = {
+  trust_store_mismatch: {
+    label: '신뢰저장소 불일치 (확정)',
+    explain: '이 인증서는 공개 CA 번들(certifi)로는 검증에 실패했지만, 이 PC에 설치된 OS 신뢰저장소로는 검증에 성공했습니다.\n\n인터넷 표준 공개 CA가 발급한 인증서가 아니라, 이 PC에만 설치된 인증서(대개 IT 부서가 배포한 사내 CA)로 서명됐다는 뜻입니다.\n\n→ 사내 방화벽이 이 연결의 TLS를 복호화(SSL Inspection)하고 있는 거의 확정적인 증거입니다.',
+  },
   issuer_unknown: {
     label: 'Issuer 미확인',
     explain: '인증서를 발급한 기관(CA)이 알려진 공개 CA 목록에 없습니다.\n\n공개 CA(DigiCert, Let\'s Encrypt, Google Trust Services 등)는 인터넷 표준으로 검증된 기관입니다. 기업 방화벽이 SSL Inspection을 할 때는 자체 내부 CA로 즉석 발급하므로 이 목록에 없게 됩니다.\n\n단, 목록이 완전하지 않아 정상 공개 CA가 누락됐을 가능성도 있습니다. Issuer 이름을 직접 검색해 확인하세요.',

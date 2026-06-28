@@ -59,6 +59,8 @@ function GlobeContent() {
     () => (destination ? latLngToVector3(destination.lat, destination.lng, 1.0) : null),
     [destination],
   )
+  // 목적지 좌표가 0,0이면 위치 불명(내부망/GeoIP 차단) — 마커/arc를 그리지 않습니다.
+  const destKnown = !!destination && !(destination.lat === 0 && destination.lng === 0)
   const hopPositions = useMemo(
     () => hops?.map((h) => latLngToVector3(h.location.lat, h.location.lng, 1.0)) ?? [],
     [hops],
@@ -72,17 +74,19 @@ function GlobeContent() {
    * dist = clamp(1.5 + angle × 2.2, 2.2, 5.0)
    */
   const camTarget = useMemo<THREE.Vector3 | null>(() => {
-    if (hopsStatus !== 'done' || !clientPos || !destPos) return null
+    if (hopsStatus !== 'done' || !clientPos || !destPos || !destKnown) return null
     const mid  = clientPos.clone().add(destPos).normalize()
     const dist = Math.max(2.2, Math.min(5.0, 1.5 + clientPos.angleTo(destPos) * 2.2))
     return mid.multiplyScalar(dist)
-  }, [hopsStatus, clientPos, destPos])
+  }, [hopsStatus, clientPos, destPos, destKnown])
 
   // arc 곡선
   const arcCurves = useMemo<(THREE.QuadraticBezierCurve3 | null)[]>(() => {
     if (!clientPos || !destPos || !hops) return []
     const allPoints = [clientPos, ...hopPositions, destPos]
     return allPoints.slice(0, -1).map((from, i) => {
+      // 마지막 구간(→ 목적지)은 목적지 좌표 불명 시 그리지 않음
+      if (i === allPoints.length - 2 && !destKnown) return null
       const fromHop = i > 0 ? hops[i - 1] : null
       const toHop   = i < hops.length ? hops[i] : null
       const bad = (h: typeof fromHop) =>
@@ -90,7 +94,7 @@ function GlobeContent() {
       if (bad(fromHop) || bad(toHop)) return null
       return buildArcCurve(from, allPoints[i + 1])
     })
-  }, [clientPos, destPos, hopPositions, hops])
+  }, [clientPos, destPos, hopPositions, hops, destKnown])
 
   // arc 색상: 증분 RTT
   const arcColors = useMemo(() => {
@@ -138,11 +142,11 @@ function GlobeContent() {
     dedupedMarkers.forEach(({ hop, pos, originalIdx }) => {
       list.push({ position: pos, kind: 'router', hopIndex: originalIdx, point: hop.location, hop })
     })
-    if (showArcs && destPos && destination) {
+    if (showArcs && destPos && destination && destKnown) {
       list.push({ position: destPos, kind: 'destination', hopIndex: hops?.length ?? 0, point: destination })
     }
     return list
-  }, [showMarkers, clientPos, client, dedupedMarkers, showArcs, destPos, destination, hops?.length])
+  }, [showMarkers, clientPos, client, dedupedMarkers, showArcs, destPos, destination, destKnown, hops?.length])
 
   const visibleArcCount = showArcs ? Math.min(visibleHops, arcCurves.length) : 0
 
@@ -178,8 +182,8 @@ function GlobeContent() {
         />
       ))}
 
-      {/* 목적지 마커 */}
-      {showArcs && destPos && destination && (
+      {/* 목적지 마커 — 좌표 불명(내부망/GeoIP 차단) 시 미표시 */}
+      {showArcs && destPos && destination && destKnown && (
         <HopMarker
           position={destPos}
           kind="destination"

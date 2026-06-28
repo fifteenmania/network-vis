@@ -128,7 +128,7 @@ export default function TracePanel({ hops, visibleCount, status }: TracePanelPro
                         )}
                       </td>
                       <td className={styles.dim} style={{ maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {isUnknownLoc ? '—' : hop.location.label}
+                        {hop.internal ? t('panels.trace.internal') : (isUnknownLoc ? '—' : hop.location.label)}
                         {hop.anycast && !isUnknownLoc && (
                           <span className={traceStyles.anycastBadge}>
                             {t('panels.trace.anycast')}
@@ -145,7 +145,7 @@ export default function TracePanel({ hops, visibleCount, status }: TracePanelPro
             </table>
           </div>
 
-          {selectedHop !== null && hops[selectedHop]?.as && (
+          {selectedHop !== null && hops && hops[selectedHop]?.as && (
             <div className={traceStyles.hopDetail}>
               <div className={styles.dim} style={{ marginBottom: 4 }}>{t('panels.trace.bgpInfo')}</div>
               {[

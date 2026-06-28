@@ -9,7 +9,7 @@
   "search": {
     "placeholder": "Enter hostname (e.g. api.openai.com)",
     "button": "Start Trace",
-    "fallbackNotice": "Cannot reach API server — running simulation with mock data."
+    "backendError": "Cannot reach the API server. Make sure the backend (uvicorn) is running."
   },
   "phases": {
     "idle": "Idle",
@@ -50,6 +50,7 @@
       "country": "Country",
       "prefix": "Prefix",
       "anycast": "CDN",
+      "internal": "Internal",
       "error": "Traceroute failed."
     },
     "tcp": {

@@ -9,7 +9,7 @@
   "search": {
     "placeholder": "호스트명 입력 (예: api.openai.com)",
     "button": "Trace 시작",
-    "fallbackNotice": "API 서버에 연결할 수 없습니다 — 목 데이터로 시뮬레이션합니다."
+    "backendError": "API 서버에 연결할 수 없습니다. 백엔드(uvicorn)가 실행 중인지 확인하세요."
   },
   "phases": {
     "idle": "대기",
@@ -50,6 +50,7 @@
       "country": "국가",
       "prefix": "Prefix",
       "anycast": "CDN",
+      "internal": "내부망",
       "error": "Traceroute 실행에 실패했습니다."
     },
     "tcp": {

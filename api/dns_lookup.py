@@ -144,29 +144,33 @@ def resolve_chain(hostname: str) -> dict:
         responseType="referral", records=root_records, durationMs=root_ms,
     ))
 
-    if not tld_ns_ips:
+    tld = qname.rsplit(".", 1)[-1] if "." in qname else qname
+    # 루트 응답에서 TLD NS를 얻지 못한 경우, .com 한정으로만 알려진 gtld 서버를 폴백 사용
+    if not tld_ns_ips and tld == "com":
         tld_ns_ips = [("192.5.6.30", "a.gtld-servers.net")]
 
     # ── 2. TLD NS ─────────────────────────────────────────────────────────────
-    tld_ip, tld_name = tld_ns_ips[0]
-    t0 = time.perf_counter()
-    try:
-        tld_resp = _query_no_recurse(tld_ip, qname, dns.rdatatype.A)
-        tld_ms = int((time.perf_counter() - t0) * 1000)
-        auth_ns_ips = _extract_ns_ips(tld_resp)
-        tld_records = []
-        for rrset in tld_resp.authority:
-            if rrset.rdtype == dns.rdatatype.NS:
-                tld_records = _rrset_records(rrset)[:2]
-                break
-    except Exception:
-        tld_ms = 0; auth_ns_ips = []; tld_records = []
+    auth_ns_ips: list[tuple[str, str]] = []
+    if tld_ns_ips:
+        tld_ip, tld_name = tld_ns_ips[0]
+        t0 = time.perf_counter()
+        try:
+            tld_resp = _query_no_recurse(tld_ip, qname, dns.rdatatype.A)
+            tld_ms = int((time.perf_counter() - t0) * 1000)
+            auth_ns_ips = _extract_ns_ips(tld_resp)
+            tld_records = []
+            for rrset in tld_resp.authority:
+                if rrset.rdtype == dns.rdatatype.NS:
+                    tld_records = _rrset_records(rrset)[:2]
+                    break
+        except Exception:
+            tld_ms = 0; auth_ns_ips = []; tld_records = []
 
-    chain.append(DnsChainStep(
-        server=tld_ip, serverLabel=f".com TLD NS ({tld_name})",
-        serverType="tld", query=qname, queryType="A",
-        responseType="referral", records=tld_records, durationMs=tld_ms,
-    ))
+        chain.append(DnsChainStep(
+            server=tld_ip, serverLabel=f".{tld} TLD NS ({tld_name})",
+            serverType="tld", query=qname, queryType="A",
+            responseType="referral", records=tld_records, durationMs=tld_ms,
+        ))
 
     # ── 3. Authoritative NS ───────────────────────────────────────────────────
     if auth_ns_ips:
@@ -209,10 +213,17 @@ def resolve_chain(hostname: str) -> dict:
             pass
     final_ms = int((time.perf_counter() - t_final) * 1000)
 
+    # 실제 시스템 리졸버(OS stub resolver의 상위 nameserver)를 표기합니다.
+    try:
+        _ns = dns.resolver.get_default_resolver().nameservers
+        resolver_label = ", ".join(str(n) for n in _ns[:2]) if _ns else "시스템 리졸버"
+    except Exception:
+        resolver_label = "시스템 리졸버"
+
     result = DnsResult(
         hostname=qname,
         records=final_records,
-        resolver="8.8.8.8 (Google Public DNS)",
+        resolver=resolver_label,
         durationMs=final_ms,
         chain=chain,
     )

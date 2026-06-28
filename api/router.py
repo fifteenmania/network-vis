@@ -21,6 +21,7 @@ from api.tls import get_cert_chain
 from api.http_probe import probe_http
 from api.geo import lookup_geo_batch
 from api.cdn_pop import fetch_cdn_pop, CDN_PROBES, ANYCAST_ASNS
+from api.ipclass import is_internal_ip
 
 router = APIRouter(prefix="/api")
 
@@ -88,25 +89,14 @@ async def trace(host: str = Query(..., description="조회할 호스트명 (예:
     client_geo = _safe(client_geo, _FALLBACK_CLIENT_GEO)
 
     # ── Phase 2: 목적지 GeoIP + CDN PoP 교정 ─────────────────────────────────
-    a_records = [r for r in dns_result.get("records", []) if r.get("type") == "A"]
-    dest_ip = a_records[0]["value"] if a_records else host
-
-    dest_geo_map = await asyncio.to_thread(lookup_geo_batch, [dest_ip])
-    dest_geo = dest_geo_map.get(dest_ip) or {
-        "lat": 37.4225, "lng": -122.085, "label": "San Francisco, US",
-    }
-    asn: int | None = (dest_geo.get("as") or {}).get("asn")
-    if asn and asn in CDN_PROBES:
-        pop = await asyncio.to_thread(fetch_cdn_pop, asn)
-        if pop:
-            dest_geo = {**dest_geo, **pop}
+    destination = await _geo_for_dns(dns_result, host)
 
     total_ms = int((time.perf_counter() - t_start) * 1000)
 
     return JSONResponse({
         "target": host,
         "client": client_geo,
-        "destination": _geo_point(dest_geo, dest_ip),
+        "destination": destination,
         "dns": dns_result,
         "hops": hops,
         "tls": tls_result,
@@ -126,8 +116,15 @@ async def _geo_for_dns(dns_result: dict, host: str) -> dict:
     a_records = [r for r in dns_result.get("records", []) if r.get("type") == "A"]
     dest_ip = a_records[0]["value"] if a_records else host
 
+    # 사설 IP(내부망 대상)는 공인 GeoIP가 없습니다.
+    if is_internal_ip(dest_ip):
+        return {"lat": 0, "lng": 0, "label": "내부망 (사설 IP)", "ip": dest_ip}
+
     dest_geo_map = await asyncio.to_thread(lookup_geo_batch, [dest_ip])
-    dest_geo = dest_geo_map.get(dest_ip) or {"lat": 37.4225, "lng": -122.085, "label": "San Francisco, US"}
+    dest_geo = dest_geo_map.get(dest_ip)
+    if not dest_geo:
+        # GeoIP 조회 실패(사내망 차단 등) — 가짜 위치로 표기하지 않고 좌표 불명으로 둡니다.
+        return {"lat": 0, "lng": 0, "label": "위치 불명", "ip": dest_ip}
 
     # CDN anycast 교정: ASN 이 CDN 이면 실제 PoP 좌표로 덮어씁니다
     asn: int | None = (dest_geo.get("as") or {}).get("asn")
